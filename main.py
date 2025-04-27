@@ -800,6 +800,27 @@ df = df.drop("Tagline (Acquiring)", axis=1)
 # %%
 df.head()
 
+
+print(df.columns.tolist())
+
+# In[229]:
+
+# Select categorical columns
+categorical_df = df[['Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)', 'Price','Acquiring Company (Acquiring)','City (HQ) (Acquiring)', 'State / Region (HQ) (Acquiring)', 'Country (HQ) (Acquiring)','Status (Acquisitions)']]
+#                                                                                                                                                                                                                                        ,,,,,,'Acquired Companies (Acquiring)','Founders (Acquiring)','Board Members (Acquiring)','Terms (Acquisitions)', 'Tagline_Embedding', 'Tagleline (aquiring)_Emb'
+# Select numerical columns
+numerical_df = df[['Price','Age on acquisition','Year Founded (Acquiring)', 'IPO (Acquiring)','Number of Employees (Acquiring)', 'Total Funding ($) (Acquiring)', 'Number of Acquisitions (Acquiring)',]]
+
+cat_correlations = categorical_df.drop("Price", axis=1).apply(
+lambda x: abs(x.corr(categorical_df["Price"], method="kendall")))
+
+num_correlations = numerical_df.drop("Price", axis=1).apply(
+    lambda x: abs(x.corr(numerical_df["Price"], method="pearson"))
+)
+print(num_correlations.sort_values(ascending=False))
+categorical_df
+print(cat_correlations.sort_values(ascending=False))
+
 # %%
 """
 # TODO
