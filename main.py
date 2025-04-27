@@ -638,6 +638,9 @@ sharedColumns = [
 ]
 
 # %%
+encoded = encoded.tolist()
+
+# %%
 for sharedColumn in sharedColumns:
     print(sharedColumn[1:][0])
     categories = getUniqueLabels(SplitMultiValuedColumn(mergeDfColumns(df,sharedColumn[1:])))
@@ -647,6 +650,7 @@ for sharedColumn in sharedColumns:
             print(encodeMultiValuedCategory(df,column,categories=categories))
         else:
             print(encodeCategory(df,column,categories=categories))
+        encoded.append(column)
 
 # %%
 multiVAluedColumns = FindMultiValuedColumns(df.drop(["Tagline","Tagline (Acquiring)"],axis=1))
@@ -658,6 +662,7 @@ df["Board Members (Acquiring)"]
 # %%
 for label in multiVAluedColumns:
     print(encodeMultiValuedCategory(df, label)[:5])
+    encoded.append(label)
 
 # %%
 df["Terms (Acquisitions)"][:5]
@@ -666,8 +671,16 @@ df["Terms (Acquisitions)"][:5]
 df.drop(encoded, axis=1).columns
 
 # %%
-for col in df.drop(encoded, axis=1).columns:
-    encodeCategory(df, col)
+# %%
+unencoded = [
+    'Status (Acquisitions)',
+    'Acquiring Company (Acquiring)',
+    'Company',
+]
+# %%
+for col in unencoded:
+    print(encodeCategory(df, col))
+
 
 # %%
 founders
