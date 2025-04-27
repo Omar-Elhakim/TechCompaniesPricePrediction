@@ -541,7 +541,7 @@ def SplitMultiValuedColumn(column):
             values_ = []
             for value in values.split(','):
                 if value.strip() != 'None':
-                    values_.append(value.strip())
+                    values_.append(value.strip().lower())
             c.append(values_)
         else:
             c.append(values)
@@ -553,7 +553,7 @@ def getUniqueLabels(column):
     for labels in column:
         for label in labels:
             if label != 'None':
-                uniqueLabels.add(label)
+                uniqueLabels.add(label.lower())
     return np.ravel(list(uniqueLabels))
 
 # %%
@@ -572,10 +572,10 @@ def encodeCategory(df, label: str, categories=[]):
 
     le = preprocessing.LabelEncoder()
     if len(categories) == 0:
-        categories = df.loc[nonNullIndex, label]
+        categories = [value.lower() for value in df.loc[nonNullIndex, label]]
 
     le.fit(categories)
-    df.loc[nonNullIndex, label] = le.transform(df.loc[nonNullIndex, label])
+    df.loc[nonNullIndex, label] = le.transform([value.lower() for value in df.loc[nonNullIndex, label]])
     return le.classes_
 
 # %%
