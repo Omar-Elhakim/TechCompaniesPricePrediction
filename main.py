@@ -13,6 +13,7 @@ from scipy.stats import shapiro
 import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sentence_transformers import SentenceTransformer
 
 # %%
 """
@@ -231,7 +232,6 @@ acquired = acquired.drop("Description", axis=1)
  
 
 * "Acquisition ID" is just used to link between files , and we can do that with the company's name
-
 """
 
 # %%
@@ -430,7 +430,6 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 ### Splitting each multi-valued category to an array of categories
 """
 
-
 # %%
 def mergeDfColumns(df: pd.DataFrame, columns: [str]):
     newCol = []
@@ -568,7 +567,7 @@ multiVAluedColumns = FindMultiValuedColumns(
 multiVAluedColumns
 
 # %%
-df["Board Members (Acquiring)"]
+df["Board Members"]
 
 # %%
 for label in multiVAluedColumns:
@@ -576,7 +575,7 @@ for label in multiVAluedColumns:
     encoded.append(label)
 
 # %%
-df["Terms (Acquisitions)"][:5]
+df["Terms"][:5]
 
 # %%
 df.drop(encoded, axis=1).columns
@@ -584,8 +583,8 @@ df.drop(encoded, axis=1).columns
 # %%
 # %%
 unencoded = [
-    'Status (Acquisitions)',
-    'Acquiring Company (Acquiring)',
+    'Status',
+    'Acquiring Company',
     'Company',
 ]
 # %%
@@ -613,7 +612,6 @@ df.head()
 # %%
 """
 # Checking outliers for actual numeric values
-
 """
 
 # %%
@@ -628,9 +626,9 @@ df.head()
 numeric_cols = [
     "Price",
     "Age on acquisition",
-    "Number of Employees (Acquiring)",
-    "Total Funding ($) (Acquiring)",
-    "Number of Acquisitions (Acquiring)",
+    "Number of Employees",
+    "Total Funding ($)",
+    "Number of Acquisitions",
 ]
 for col in numeric_cols:
     stat, p = shapiro(df[col].dropna())
@@ -651,7 +649,6 @@ for col in numeric_cols:
 # %%
 """
 # Data isn't normally distributed so IQR method will be more efficient
-
 """
 
 # %%
@@ -696,18 +693,18 @@ for col in numeric_cols:
 """
 
 # %%
-df["Total Funding ($) (Acquiring)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
+df["Total Funding ($)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
 
 
 # %%
-df["Total Funding ($) (Acquiring)"].fillna(
-    df["Total Funding ($) (Acquiring)"].median(), inplace=True
+df["Total Funding ($)"].fillna(
+    df["Total Funding ($)"].median(), inplace=True
 )
 
 
 # %%
 df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
-df["Total Funding ($) (Acquiring)"] = np.log(df["Total Funding ($) (Acquiring)"] + 1)
+df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
 
 # %%
 for col in numeric_cols:
@@ -725,9 +722,7 @@ for col in numeric_cols:
 # %%
 """
 ### Imputing the null values
-
 """
-
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
@@ -779,8 +774,6 @@ df["Tagline"] = acquired["Tagline"].fillna("")
 
 
 # %%
-from sentence_transformers import SentenceTransformer
-
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 df['Tagline_Embedding'] = acquired['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
@@ -806,4 +799,6 @@ df.head()
 * scaling
 * outliers
 * What to do with founders
+* Not everything should be imputed
+* report
 """
