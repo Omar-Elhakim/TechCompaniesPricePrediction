@@ -7,13 +7,12 @@ Imports
 import pandas as pd
 import numpy as np
 import requests
-import plotly.express as px
 from sklearn import preprocessing
 from sklearn.impute import KNNImputer
-from scipy.stats import zscore
+from scipy.stats import shapiro
+import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 
 # %%
 """
@@ -35,19 +34,6 @@ acquisitions.iloc[0]
 # %%
 founders = pd.read_csv("Data/Founders and Board Members.csv")
 founders.iloc[0]
-
-# %%
-"""
-We will link between the files using these columns:
-* Acquisitions ID to link the acquisitions
-* 'Founders' and 'Name' to link the Founders
-"""
-
-# %%
-np.intersect1d(acquired.columns, acquisitions.columns).tolist()
-
-# %%
-np.intersect1d(acquiring.columns, acquisitions.columns).tolist()
 
 # %%
 def ValidateLink(url, timeout=15):
@@ -161,10 +147,13 @@ acquisitions["Price"] = [
 ]
 
 # %%
+"""
 acquired["Price"] = None
 acquired["Year of acquisition announcement"] = None
+"""
 
 # %%
+"""
 for i, company in enumerate(acquisitions["Acquired Company"]):
     acquired.loc[acquired["Company"] == company, "Price"] = acquisitions.iloc[i][
         "Price"
@@ -172,6 +161,7 @@ for i, company in enumerate(acquisitions["Acquired Company"]):
     acquired.loc[acquired["Company"] == company, "Year of acquisition announcement"] = (
         acquisitions.iloc[i]["Year of acquisition announcement"]
     )
+"""
 
 # %%
 fig = px.scatter(
@@ -197,59 +187,12 @@ acquisitions.loc[
 
 # %%
 """
-Plotting again without the error, now we can see that the overall trend of prices tends to go up, that's why we added the 'Year of acquisitions announcement' column
-"""
-
-# %%
-fig = px.scatter(
-    acquisitions,
-    x="Year of acquisition announcement",
-    y="Price",
-    title="Acquisition Price by Year",
-    width=700,
-    height=400,
-)
-fig.show()
-
-# %%
-"""
 update the datatypes automatically
 """
 
 # %%
 acquired = acquired.infer_objects()
 acquisitions = acquisitions.infer_objects()
-
-# %%
-fig = px.scatter(
-    acquired,
-    x="Year Founded",
-    y="Price",
-    title="Acquisition Price by Year",
-    width=600,
-    height=400,
-)
-fig.show()
-
-# %%
-"""
-Another error found and corrected
-"""
-
-# %%
-acquired.loc[acquired["Year Founded"] == 1840, "Year Founded"] = 2006
-acquired.loc[acquired["Year Founded"] == 1933, "Year Founded"] = 1989
-
-# %%
-fig = px.scatter(
-    acquired,
-    x="Year Founded",
-    y="Price",
-    title="Acquisition Price by Year",
-    width=600,
-    height=400,
-)
-fig.show()
 
 # %%
 acquired.iloc[12]["Tagline"]
@@ -295,27 +238,6 @@ acquiring = acquiring.drop(
 founders = founders.drop("CrunchBase Profile", axis=1)
 
 # %%
-acquired["Age on acquisition"] = (
-    acquired["Year of acquisition announcement"] - acquired["Year Founded"]
-)
-
-# %%
-acquired = acquired.drop(["Year Founded", "Year of acquisition announcement"], axis=1)
-
-# %%
-"""
-All these columns are probably related to the target column , so we will keep them for now
-"""
-
-# %%
-"""
-Market categories contains multiple values , still not processed
-"""
-
-# %%
-acquired.info()
-
-# %%
 """
 Dropping 'year of last update' of the number of employees , because we don't need it directly and can't use it in any way to pridct the current number
 """
@@ -329,7 +251,7 @@ There are multiple 'NOT YET' in the IPO column , and the earliest the number the
 """
 
 # %%
-acquiring["IPO"].value_counts()[:5]
+acquiring["IPO"].value_counts(dropna=False)
 
 # %%
 acquiring.loc[acquiring["IPO"] == "Not yet", "IPO"] = 2025  # 2025 is debatable
@@ -342,62 +264,11 @@ acquiring["Number of Employees"] = [
 
 # %%
 """
-Idea for acquiring companies: calculate the average price paid for all acquired companies
-"""
-
-# %%
-"""
-how to categorize multiple values in the same cell?
-"""
-
-# %%
-acquiring["Market Categories"][:5]
-
-# %%
-acquiring = acquiring.astype(
-    {
-        "IPO": "float",
-    }
-)
-
-# %%
-flattened = [x for item in acquiring["Board Members"].dropna() for x in item.split(",")]
-
-# %%
-pd.Series(flattened).nunique()
-
-# %%
-len(np.intersect1d(founders["Name"], flattened))
-
-# %%
-"""
-Some of the board members are in the founders df , so we won't drop them for now
-"""
-
-# %%
-acquiring.info()
-
-# %%
-founders["Companies"].value_counts()[:5]
-
-# %%
-founders["Role"].value_counts()
-
-# %%
-"""
 The image of the founder doesn't affect anything at all ... DROPPED
 """
 
 # %%
 founders = founders.drop("Image", axis=1)
-
-# %%
-"""
-Ready
-"""
-
-# %%
-founders.info()
 
 # %%
 """
@@ -410,22 +281,14 @@ founders.info()
 acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
 
 # %%
-acquisitions["Status"].value_counts()
-
-# %%
-acquisitions["Terms"].value_counts()
-
-# %%
-acquisitions.info()
-
-# %%
 df = acquired.copy()
 
 # %%
 renamed_columns = {}
 for col in acquiring.columns:
-    new_col = f"{col} (Acquiring)"
-    renamed_columns[col] = new_col
+    if col in df.columns:
+        new_col = f"{col} (Acquiring)"
+        renamed_columns[col] = new_col
 
 acquiring = acquiring.rename(columns=renamed_columns)
 
@@ -435,18 +298,16 @@ for col in acquiring.columns:
 
 for i, row1 in df.iterrows():
     for j, row2 in acquiring.iterrows():
-        if row1["Acquired by"] == row2["Acquiring Company (Acquiring)"]:
+        if row1["Acquired by"] == row2["Acquiring Company"]:
             for col in acquiring.columns:
                 df.at[i, col] = row2[col]
 
 # %%
-df = df.drop("Acquired by", axis=1)  # delete a the duplicate column used for linking
-
-# %%
 renamed_columns = {}
 for col in acquisitions.columns:
-    new_col = f"{col} (Acquisitions)"
-    renamed_columns[col] = new_col
+    if col in df.columns:
+        new_col = f"{col} (Acquisitions)"
+        renamed_columns[col] = new_col
 
 acquisitions = acquisitions.rename(columns=renamed_columns)
 
@@ -466,26 +327,21 @@ Delete duplicate columns , and already used columns
 """
 
 # %%
-df[:3]
-
-# %%
 df = df.drop(
     [
+        "Acquired by",
         "Acquisitions ID",
         "Acquiring Company (Acquisitions)",
-        "Acquired Company (Acquisitions)",
+        "Acquired Company",
         "Acquisitions ID (Acquisitions)",
-        "Price (Acquisitions)",
-        "Year of acquisition announcement (Acquisitions)",
     ],
     axis=1,
 )
 
 # %%
-df.loc[0]
-
-# %%
-df.head()
+"""
+linking founders
+"""
 
 # %%
 """
@@ -508,18 +364,62 @@ for j, row1 in founders.iterrows():
 """
 
 # %%
-print(df['Country (HQ)'].value_counts())
+fig = px.scatter(
+    df,
+    x="Year Founded",
+    y="Price",
+    title="Acquisition Price by Year",
+    width=600,
+    height=400,
+)
+fig.show()
 
+# %%
+"""
+Another error found and corrected
+"""
+
+# %%
+df.loc[df["Year Founded"] == 1840, "Year Founded"] = 2006
+df.loc[df["Year Founded"] == 1933, "Year Founded"] = 1989
+
+# %%
+fig = px.scatter(
+    df,
+    x="Year Founded",
+    y="Price",
+    title="Acquisition Price by Year",
+    width=600,
+    height=400,
+)
+fig.show()
+
+# %%
+df["Age on acquisition"] = (
+    df["Year of acquisition announcement"] - df["Year Founded"]
+)
+
+# %%
+df.loc[0]
+
+# %%
+df=df[df['Country (HQ)']!='Israel']
+
+# %%
+"""
+Processing countries
+"""
+
+# %%
+df['Country (HQ)'].value_counts()
 
 # %%
 df['Country (HQ)'] = df['Country (HQ)'].replace('United Stats of AMerica', 'United States')
-
 
 # %%
 counts = df['Country (HQ)'].value_counts()
 rare_countries = counts[counts < 3].index
 df['Country (HQ)'] = df['Country (HQ)'].replace(rare_countries, 'Other')
-
 
 # %%
 """
@@ -601,12 +501,6 @@ encoded = np.intersect1d(df.columns, FindMultiValuedColumns(df))
 
 # %%
 encoded
-
-# %%
-df.iloc[0]
-
-# %%
-founders.info()
 
 # %%
 sharedColumns = [
@@ -693,7 +587,7 @@ df.head()
 """
 
 # %%
-from scipy.stats import shapiro
+
 
 # %%
 numeric_cols = [
