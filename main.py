@@ -427,7 +427,7 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 
 # %%
 """
-### Spliting each multi-valued category to an array of categories
+### Splitting each multi-valued category to an array of categories
 """
 
 
@@ -444,12 +444,11 @@ def SplitMultiValuedColumn(column):
     c = []
     for values in column:
         if type(values) == str:
-            c.append(
-                [
-                    value.strip() if type(value) == str else values
-                    for value in values.split(",")
-                ]
-            )
+            values_ = []
+            for value in values.split(','):
+                if value.strip() != 'None':
+                    values_.append(value.strip().lower())
+            c.append(values_)
         else:
             c.append(values)
     return c
@@ -460,7 +459,8 @@ def getUniqueLabels(column):
     uniqueLabels = set([])
     for labels in column:
         for label in labels:
-            uniqueLabels.add(label)
+            if label != 'None':
+                uniqueLabels.add(label.lower())
     return np.ravel(list(uniqueLabels))
 
 
@@ -483,10 +483,10 @@ def encodeCategory(df, label: str, categories=[]):
 
     le = preprocessing.LabelEncoder()
     if len(categories) == 0:
-        categories = df.loc[nonNullIndex, label]
+        categories = [value.lower() for value in df.loc[nonNullIndex, label]]
 
     le.fit(categories)
-    df.loc[nonNullIndex, label] = le.transform(df.loc[nonNullIndex, label])
+    df.loc[nonNullIndex, label] = le.transform([value.lower() for value in df.loc[nonNullIndex, label]])
     return le.classes_
 
 
@@ -545,6 +545,9 @@ sharedColumns = [
 ]
 
 # %%
+encoded = encoded.tolist()
+
+# %%
 for sharedColumn in sharedColumns:
     print(sharedColumn[1:][0])
     categories = getUniqueLabels(
@@ -555,7 +558,8 @@ for sharedColumn in sharedColumns:
         if sharedColumn[0]:
             print(encodeMultiValuedCategory(df, column, categories=categories))
         else:
-            print(encodeCategory(df, column, categories=categories))
+            print(encodeCategory(df,column,categories=categories))
+        encoded.append(column)
 
 # %%
 multiVAluedColumns = FindMultiValuedColumns(
@@ -569,6 +573,7 @@ df["Board Members (Acquiring)"]
 # %%
 for label in multiVAluedColumns:
     print(encodeMultiValuedCategory(df, label)[:5])
+    encoded.append(label)
 
 # %%
 df["Terms (Acquisitions)"][:5]
@@ -577,8 +582,16 @@ df["Terms (Acquisitions)"][:5]
 df.drop(encoded, axis=1).columns
 
 # %%
-for col in df.drop(encoded, axis=1).columns:
-    encodeCategory(df, col)
+# %%
+unencoded = [
+    'Status (Acquisitions)',
+    'Acquiring Company (Acquiring)',
+    'Company',
+]
+# %%
+for col in unencoded:
+    print(encodeCategory(df, col))
+
 
 # %%
 founders
@@ -605,7 +618,7 @@ df.head()
 
 # %%
 """
-- We have to chek first if those features are normally distributed or not
+- We have to check first if those features are normally distributed or not
 """
 
 # %%
@@ -637,7 +650,7 @@ for col in numeric_cols:
 
 # %%
 """
-# Data isn't normally distributed so IQR method will be more effiecient
+# Data isn't normally distributed so IQR method will be more efficient
 
 """
 
@@ -679,7 +692,7 @@ for col in numeric_cols:
 
 # %%
 """
-- Skewness of Total Funding and Age on aquisition is high so we can use log transformation to avoid data skewing 
+- Skewness of Total Funding and Age on acquisition is high so we can use log transformation to avoid data skewing 
 """
 
 # %%
@@ -770,6 +783,8 @@ from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+df['Tagline_Embedding'] = acquired['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
+df['Tagleline (acquiring)_Emb']=acquiring['Tagline (Acquiring)'].apply(lambda x: model.encode(str(x)).tolist())
 df["Tagline_Embedding"] = acquired["Tagline"].apply(
     lambda x: model.encode(str(x)).tolist()
 )
@@ -786,14 +801,9 @@ df = df.drop("Tagline (Acquiring)", axis=1)
 df.head()
 
 # %%
-
-
-# %%
 """
 # TODO
-* **there is 'None' values in Market Categories** probabily needs imputation but it's encoded
 * scaling
 * outliers
-* embed Tagline
 * What to do with founders
 """
