@@ -35,6 +35,7 @@ acquisitions.iloc[0]
 founders = pd.read_csv("Data/Founders and Board Members.csv")
 founders.iloc[0]
 
+
 # %%
 def ValidateLink(url, timeout=15):
     session = requests.Session()
@@ -60,6 +61,7 @@ def ValidateLink(url, timeout=15):
     except Exception as e:
         return False
 
+
 # %%
 def ValidateLinks(urls):
     results = []
@@ -68,6 +70,7 @@ def ValidateLinks(urls):
         if results[-1]:
             return results
     return results
+
 
 # %%
 def ValidateLinksDF(df):
@@ -81,6 +84,7 @@ def ValidateLinksDF(df):
                     print("Try it yourself:")
                     print(df[col][0] + "\n")
                 break
+
 
 # %%
 """
@@ -395,15 +399,13 @@ fig = px.scatter(
 fig.show()
 
 # %%
-df["Age on acquisition"] = (
-    df["Year of acquisition announcement"] - df["Year Founded"]
-)
+df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Founded"]
 
 # %%
 df.loc[0]
 
 # %%
-df=df[df['Country (HQ)']!='Israel']
+df = df[df["Country (HQ)"] != "Israel"]
 
 # %%
 """
@@ -411,37 +413,47 @@ Processing countries
 """
 
 # %%
-df['Country (HQ)'].value_counts()
+df["Country (HQ)"].value_counts()
 
 # %%
-df['Country (HQ)'] = df['Country (HQ)'].replace('United Stats of AMerica', 'United States')
+df["Country (HQ)"] = df["Country (HQ)"].replace(
+    "United Stats of AMerica", "United States"
+)
 
 # %%
-counts = df['Country (HQ)'].value_counts()
+counts = df["Country (HQ)"].value_counts()
 rare_countries = counts[counts < 3].index
-df['Country (HQ)'] = df['Country (HQ)'].replace(rare_countries, 'Other')
+df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 
 # %%
 """
 ### Spliting each multi-valued category to an array of categories
 """
 
+
 # %%
-def mergeDfColumns(df : pd.DataFrame, columns: [str]):
+def mergeDfColumns(df: pd.DataFrame, columns: [str]):
     newCol = []
     for column in columns:
-        newCol = [*newCol,*df[column].dropna().tolist()]
+        newCol = [*newCol, *df[column].dropna().tolist()]
     return newCol
+
 
 # %%
 def SplitMultiValuedColumn(column):
     c = []
     for values in column:
         if type(values) == str:
-            c.append([ value.strip() if type(value) == str else values for value in values.split(',') ])
+            c.append(
+                [
+                    value.strip() if type(value) == str else values
+                    for value in values.split(",")
+                ]
+            )
         else:
             c.append(values)
     return c
+
 
 # %%
 def getUniqueLabels(column):
@@ -451,6 +463,7 @@ def getUniqueLabels(column):
             uniqueLabels.add(label)
     return np.ravel(list(uniqueLabels))
 
+
 # %%
 def encodeMultiValuedCategory(df, label: str, categories=[]):
     le = preprocessing.LabelEncoder()
@@ -458,8 +471,11 @@ def encodeMultiValuedCategory(df, label: str, categories=[]):
     if len(categories) == 0:
         categories = getUniqueLabels(df[label].dropna())
     le.fit(categories)
-    df[label] = [le.transform(values) if type(values) == list else values for values in df[label]]
+    df[label] = [
+        le.transform(values) if type(values) == list else values for values in df[label]
+    ]
     return le.classes_
+
 
 # %%
 def encodeCategory(df, label: str, categories=[]):
@@ -472,6 +488,7 @@ def encodeCategory(df, label: str, categories=[]):
     le.fit(categories)
     df.loc[nonNullIndex, label] = le.transform(df.loc[nonNullIndex, label])
     return le.classes_
+
 
 # %%
 def FindMultiValuedColumns(df):
@@ -492,6 +509,7 @@ def FindMultiValuedColumns(df):
         except:
             pass
     return cols
+
 
 # %%
 FindMultiValuedColumns(df)
@@ -519,26 +537,30 @@ sharedColumns = [
         "State / Region (HQ)",
         "State / Region (HQ) (Acquiring)",
     ],
-    [ 
+    [
         True,
-        'Market Categories',
-        'Market Categories (Acquiring)',
+        "Market Categories",
+        "Market Categories (Acquiring)",
     ],
 ]
 
 # %%
 for sharedColumn in sharedColumns:
     print(sharedColumn[1:][0])
-    categories = getUniqueLabels(SplitMultiValuedColumn(mergeDfColumns(df,sharedColumn[1:])))
+    categories = getUniqueLabels(
+        SplitMultiValuedColumn(mergeDfColumns(df, sharedColumn[1:]))
+    )
     print(categories)
     for column in sharedColumn[1:]:
         if sharedColumn[0]:
-            print(encodeMultiValuedCategory(df,column,categories=categories))
+            print(encodeMultiValuedCategory(df, column, categories=categories))
         else:
-            print(encodeCategory(df,column,categories=categories))
+            print(encodeCategory(df, column, categories=categories))
 
 # %%
-multiVAluedColumns = FindMultiValuedColumns(df.drop(["Tagline","Tagline (Acquiring)"],axis=1))
+multiVAluedColumns = FindMultiValuedColumns(
+    df.drop(["Tagline", "Tagline (Acquiring)"], axis=1)
+)
 multiVAluedColumns
 
 # %%
@@ -563,8 +585,8 @@ founders
 
 # %%
 for i in FindMultiValuedColumns(founders):
-    print(encodeMultiValuedCategory(founders,i))
-encodeCategory(founders,"Name")
+    print(encodeMultiValuedCategory(founders, i))
+encodeCategory(founders, "Name")
 
 # %%
 founders
@@ -591,11 +613,11 @@ df.head()
 
 # %%
 numeric_cols = [
-    'Price',
-    'Age on acquisition',
-    'Number of Employees (Acquiring)',
-    'Total Funding ($) (Acquiring)',
-    'Number of Acquisitions (Acquiring)',
+    "Price",
+    "Age on acquisition",
+    "Number of Employees (Acquiring)",
+    "Total Funding ($) (Acquiring)",
+    "Number of Acquisitions (Acquiring)",
 ]
 for col in numeric_cols:
     stat, p = shapiro(df[col].dropna())
@@ -604,14 +626,13 @@ for col in numeric_cols:
         print(" Normal \n")
     else:
         print("NOT Normal \n")
-        
+
     plt.figure(figsize=(8, 6))
     sns.histplot(df[col].dropna(), kde=True, bins=20)
     plt.title(f"Histogram and KDE for {col}")
     plt.xlabel(col)
-    plt.ylabel('Frequency')
+    plt.ylabel("Frequency")
     plt.show()
-
 
 
 # %%
@@ -624,7 +645,7 @@ for col in numeric_cols:
 outliers = {}
 
 for col in numeric_cols:
-    
+
     q1 = df[col].quantile(0.25)
     q3 = df[col].quantile(0.75)
     iqr = q3 - q1
@@ -639,14 +660,14 @@ for col in numeric_cols:
 print(pd.Series(outliers).sort_values(ascending=False))
 
 # %%
-sns.boxplot(x=df['Age on acquisition'])
+sns.boxplot(x=df["Age on acquisition"])
 plt.title("Boxplot of Age on Acquisition")
 plt.show()
 
 
 # %%
-median_value = df['Age on acquisition'].median()
-df['Age on acquisition'] = df['Age on acquisition'].apply(
+median_value = df["Age on acquisition"].median()
+df["Age on acquisition"] = df["Age on acquisition"].apply(
     lambda x: median_value if x < lower_bound or x > upper_bound else x
 )
 
@@ -662,16 +683,18 @@ for col in numeric_cols:
 """
 
 # %%
-df['Total Funding ($) (Acquiring)'].apply(pd.to_numeric, errors='coerce').isnull().sum()
+df["Total Funding ($) (Acquiring)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
 
 
 # %%
-df['Total Funding ($) (Acquiring)'].fillna(df['Total Funding ($) (Acquiring)'].median(), inplace=True)
+df["Total Funding ($) (Acquiring)"].fillna(
+    df["Total Funding ($) (Acquiring)"].median(), inplace=True
+)
 
 
 # %%
-df['Age on acquisition'] = np.log(df['Age on acquisition'] + 1)
-df['Total Funding ($) (Acquiring)'] = np.log(df['Total Funding ($) (Acquiring)'] + 1)
+df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
+df["Total Funding ($) (Acquiring)"] = np.log(df["Total Funding ($) (Acquiring)"] + 1)
 
 # %%
 for col in numeric_cols:
@@ -682,7 +705,7 @@ for col in numeric_cols:
 for col in numeric_cols:
     plt.figure(figsize=(6, 1.5))
     sns.boxplot(x=df[col])
-    plt.title(f'Boxplot for {col}')
+    plt.title(f"Boxplot for {col}")
     plt.show()
 
 
@@ -691,6 +714,7 @@ for col in numeric_cols:
 ### Imputing the null values
 
 """
+
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
@@ -707,6 +731,7 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
     df_copy[numeric_cols] = imputed_df
 
     return df_copy
+
 
 # %%
 df.isnull().sum().sum()
@@ -734,24 +759,28 @@ correlations.sort_values(ascending=False)
 df.head()
 
 # %%
-df['Tagline'].isnull().sum()
+df["Tagline"].isnull().sum()
 
 # %%
-df['Tagline'] = acquired['Tagline'].fillna('')
+df["Tagline"] = acquired["Tagline"].fillna("")
 
 
 # %%
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-df['Tagline_Embedding'] = acquired['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
-df['Tagleline (aquiring)_Emb']=acquiring['Tagline (Acquiring)'].apply(lambda x: model.encode(str(x)).tolist())
+df["Tagline_Embedding"] = acquired["Tagline"].apply(
+    lambda x: model.encode(str(x)).tolist()
+)
+df["Tagleline (aquiring)_Emb"] = acquiring["Tagline (Acquiring)"].apply(
+    lambda x: model.encode(str(x)).tolist()
+)
 
 
 # %%
-df = df.drop("Tagline",axis=1)
-df = df.drop("Tagline (Acquiring)",axis=1)
+df = df.drop("Tagline", axis=1)
+df = df.drop("Tagline (Acquiring)", axis=1)
 
 # %%
 df.head()
