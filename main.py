@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import requests
 from sklearn import preprocessing
-from sklearn.impute import KNNImputer
+from sklearn.impute import KNNImputer,SimpleImputer
 from scipy.stats import shapiro
 import plotly.express as px
 import matplotlib.pyplot as plt
@@ -729,14 +729,19 @@ for col in numeric_cols:
 
 # %%
 s=0
+cats=[]
 for c in df.columns:
     try:
-        if df[c].sum()<2:
+        if df[c].sum()==1:
             print(c)
+            cats.append(c)
             s+=1
     except:
         pass
 print(s)
+
+# %%
+df=df.drop(cats,axis=1)
 
 # %%
 """
@@ -745,49 +750,39 @@ print(s)
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
-
     df_copy = df.copy()
 
     numeric_cols = df_copy.select_dtypes(include=[float, int]).columns
-    numeric_df = df_copy[numeric_cols]
+    categorical_cols = df_copy.select_dtypes(include=[object]).columns
 
+    numeric_df = df_copy[numeric_cols]
     imputer = KNNImputer(n_neighbors=n_neighbors)
     imputed_array = imputer.fit_transform(numeric_df)
-
     imputed_df = pd.DataFrame(imputed_array, columns=numeric_cols, index=df_copy.index)
     df_copy[numeric_cols] = imputed_df
 
+    categorical_df = df_copy[categorical_cols]
+
+    categorical_df = categorical_df.astype(str)
+
+    cat_imputer = SimpleImputer(strategy='most_frequent')
+    cat_imputed_array = cat_imputer.fit_transform(categorical_df)
+    cat_imputed_df = pd.DataFrame(cat_imputed_array, columns=categorical_cols, index=df_copy.index)
+    df_copy[categorical_cols] = cat_imputed_df
+
     return df_copy
 
+# %%
+must_not_be_null = [
+    'Price', 'Acquiring Company',    'Year of acquisition announcement'
+]
+
+df = df.dropna(subset=must_not_be_null)
+
+df = knn_impute_numeric(df)
 
 # %%
 df.isnull().sum().sum()
-
-# %%
-df = knn_impute_numeric(df.infer_objects())
-
-# %%
-df.isnull().sum().sum()  # Tagline
-
-
-# %%
-df["Tagline"].isnull().sum()
-
-# %%
-df["Tagline"] = acquired["Tagline"].fillna("")
-
-
-# %%
-df = df.dropna()
-
-# %%
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-df["Tagline"] = df["Tagline"].apply(lambda x: model.encode(str(x)).tolist())
-df["Tagline (Acquiring)"] = df["Tagline (Acquiring)"].apply(
-    lambda x: model.encode(str(x)).tolist()
-)
-
 
 # %%
 cols_to_scale = [
@@ -807,68 +802,18 @@ scaler = MinMaxScaler()
 df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 
 # %%
-
-# Select categorical columns
-categorical_df = df[
-    [
-        "Company",
-        "City (HQ)",
-        "State / Region (HQ)",
-        "Country (HQ)",
-        "Acquiring Company",
-        "City (HQ) (Acquiring)",
-        "State / Region (HQ) (Acquiring)",
-        "Country (HQ) (Acquiring)",
-        "Status",
-    ]
-]
-# Select numerical columns
-numerical_df = df[
-    [
-        "Age on acquisition",
-        "Year Founded (Acquiring)",
-        "IPO",
-        "Number of Employees",
-        "Total Funding ($)",
-        "Number of Acquisitions",
-    ]
-]
-
-# merge
-applicable_df = df[
-    [
-        "Age on acquisition",
-        "Year Founded (Acquiring)",
-        "IPO",
-        "Number of Employees",
-        "Total Funding ($)",
-        "Number of Acquisitions",
-        "Company",
-        "City (HQ)",
-        "State / Region (HQ)",
-        "Country (HQ)",
-        "Acquiring Company",
-        "City (HQ) (Acquiring)",
-        "State / Region (HQ) (Acquiring)",
-        "Country (HQ) (Acquiring)",
-        "Status",
-    ]
-]
-
-cat_correlations = categorical_df.apply(
-    lambda x: abs(x.corr(df["Price"], method="kendall"))
-)
-
-num_correlations = numerical_df.apply(
+num_correlations = df[cols_to_scale].apply(
     lambda x: abs(x.corr(df["Price"], method="pearson"))
 )
-print(num_correlations.sort_values(ascending=False))
-print(cat_correlations.sort_values(ascending=False))
+num_correlations.sort_values(ascending=False)[:20]
 
 # %%
-pca = PCA(n_components=2)
-result = pca.fit_transform(applicable_df.dropna())
-pca.explained_variance_ratio_
+df=df.dropna()
+
+# %%
+# pca = PCA(n_components=2)
+# result = pca.fit_transform(df)
+# pca.explained_variance_ratio_
 
 # %%
 plt.plot(result)
@@ -878,30 +823,33 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
+
+# %%
+
 # Split into training and testing
 X_train, X_test, y_train, y_test = train_test_split(
     df.drop(
         [
             "Price",
-            "Tagline",
-            "Market Categories",
-            "Tagline (Acquiring)",
-            "Market Categories (Acquiring)",
-            "Founders",
-            "Board Members",
-            "Acquired Companies",
-            "Terms",
         ],
         axis=1,
     ),
     df["Price"],
-    test_size=0.2,
+    test_size=0.3,
     random_state=42,
 )
-# X_train, X_test, y_train, y_test = train_test_split(result,df['Price'], test_size=0.2, random_state=42)
 
+
+# %%
+"""
+X_train, X_test, y_train, y_test = train_test_split(result,df['Price'], test_size=0.2, random_state=42)
+"""
+
+# %%
 reg = RandomForestRegressor()
 reg.fit(X_train, y_train)
+
+# %%
 
 # Predict on test set
 y_pred = reg.predict(X_test)
@@ -913,30 +861,14 @@ print(f"Mean Squared Error: {mse:.4f}")
 # %%
 from sklearn.model_selection import cross_val_score
 
-# Cross-validate with 5 folds
 scores = cross_val_score(reg, X_train, y_train, scoring="neg_mean_squared_error", cv=10)
 
-# Scores will be negative because sklearn treats bigger = better. So take the negative.
 mse_scores = -scores
 
-print("MSE scores on each fold:", mse_scores)
-print("Average MSE:", np.mean(mse_scores))
+np.mean(mse_scores)
 
 # %%
 from sklearn.metrics import r2_score
 
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
-
-
-# %%
-
-
-# %%
-"""
-# TODO
-* scaling
-* What to do with founders
-* Not everything should be imputed
-* report
-"""
