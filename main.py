@@ -14,6 +14,8 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
+from sklearn.preprocessing import MinMaxScaler
+
 
 # %%
 """
@@ -791,6 +793,19 @@ df = df.drop("Tagline", axis=1)
 df = df.drop("Tagline (Acquiring)", axis=1)
 
 # %%
+df.head()
+
+# %%
+cols_to_scale = [
+    'Age on acquisition',
+    'Year Founded',
+    'Year of acquisition announcement'
+]
+
+scaler = MinMaxScaler()
+
+df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
+
 df.head()
 
 # %%
