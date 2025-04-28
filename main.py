@@ -403,16 +403,12 @@ One hot encoding:
 """
 
 # %%
-len(df[" (HQ)"].unique())
-
-# %%
 df.loc[0]
 
 # %%
 """
 ### Splitting each multi-valued category to an array of categories
 """
-
 
 # %%
 def mergeDfColumns(df: pd.DataFrame, columns: [str]):
@@ -430,7 +426,7 @@ def SplitMultiValuedColumn(column):
             values_ = []
             for value in values.split(","):
                 if value.strip() != "None":
-                    values_.append(value.strip().lower())
+                    values_.append(value.strip())
             c.append(values_)
         else:
             c.append(values)
@@ -439,13 +435,43 @@ def SplitMultiValuedColumn(column):
 
 # %%
 def getUniqueLabels(column):
-    uniqueLabels = set([])
+    uniqueLabels = []
     for labels in column:
         for label in labels:
-            if label != "None":
-                uniqueLabels.add(label.lower())
-    return np.ravel(list(uniqueLabels))
+            if ((label != "None") and (label not in uniqueLabels)):
+                uniqueLabels.append(label)
+    return uniqueLabels
 
+# %%
+marketCategories=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories'].dropna()))
+
+# %%
+for category in marketCategories:
+    df[category] = df['Market Categories'].apply(lambda x: 1 if ((type(x)!=float) and (category in x)) else 0)
+
+# %%
+marketCategoriesAcquiring=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories (Acquiring)'].dropna()))
+
+# %%
+for category in marketCategoriesAcquiring:
+    df[category+' (Acquiring)'] = df['Market Categories (Acquiring)'].apply(lambda x: 1 if ((type(x)!=float) and x and (category in x)) else 0)
+
+# %%
+np.intersect1d(marketCategories,marketCategoriesAcquiring)
+
+# %%
+s=0
+for c in df.columns:
+    try:
+        if df[c].sum()<2:
+            print(c)
+            s+=1
+    except:
+        pass
+print(s)
+
+# %%
+df_pandas_encoded = pd.get_dummies(df, columns=['Market Categories'], drop_first=True)
 
 # %%
 def encodeMultiValuedCategory(df, label: str, categories=[]):
@@ -560,11 +586,13 @@ for label in multiVAluedColumns:
 
 # %%
 encodeCategory(df, "Status")
+
 # %%
 for i in FindMultiValuedColumns(founders):
     encodeMultiValuedCategory(founders, i)
 encodeCategory(founders, "Name")
 print()
+
 # %%
 """
 # Checking outliers for actual numeric values
@@ -574,9 +602,6 @@ print()
 """
 - We have to check first if those features are normally distributed or not
 """
-
-# %%
-df.loc[0]
 
 # %%
 numeric_cols = [
@@ -677,7 +702,6 @@ for col in numeric_cols:
 """
 ### Imputing the null values
 """
-
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
