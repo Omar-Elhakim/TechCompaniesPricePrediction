@@ -36,7 +36,6 @@ acquisitions.iloc[0]
 founders = pd.read_csv("Data/Founders and Board Members.csv")
 founders.iloc[0]
 
-
 # %%
 def ValidateLink(url, timeout=15):
     session = requests.Session()
@@ -191,15 +190,6 @@ acquisitions.loc[
 ] = 2014
 
 # %%
-"""
-update the datatypes automatically
-"""
-
-# %%
-acquired = acquired.infer_objects()
-acquisitions = acquisitions.infer_objects()
-
-# %%
 acquired.iloc[12]["Tagline"]
 
 # %%
@@ -250,15 +240,10 @@ Dropping 'year of last update' of the number of employees , because we don't nee
 acquiring = acquiring.drop("Number of Employees (year of last update)", axis=1)
 
 # %%
-"""
-There are multiple 'NOT YET' in the IPO column , and the earliest the number the better it is , so we won't replace them with zero ,we will replace them with 2025 or anything larger
-"""
+acquiring["IPO"].value_counts()[:5]
 
 # %%
-acquiring["IPO"].value_counts(dropna=False)
-
-# %%
-acquiring.loc[acquiring["IPO"] == "Not yet", "IPO"] = 2025  # 2025 is debatable
+acquiring.loc[acquiring["IPO"] == "Not yet", "IPO"] = None
 
 # %%
 acquiring["Number of Employees"] = [
@@ -343,31 +328,6 @@ df = df.drop(
 )
 
 # %%
-"""
-linking founders
-"""
-
-# %%
-"""
-renamed_columns = {}
-for col in founders.columns:
-    new_col = f"{col} (Founders)"
-    renamed_columns[col] = new_col
-
-founders = founders.rename(columns=renamed_columns)
-
-for col in founders.columns:
-    if col not in df.columns:
-        df[col] = None
-
-for j, row1 in founders.iterrows():
-    for i, row2 in df.iterrows():
-        if row1["Name (Founders)"] in row2["Founders (Acquiring)"]:
-            for col in founders.columns:
-                df.at[i, col] = row2[col]
-"""
-
-# %%
 fig = px.scatter(
     df,
     x="Year Founded",
@@ -400,9 +360,6 @@ fig.show()
 
 # %%
 df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Founded"]
-
-# %%
-df.loc[0]
 
 # %%
 df = df[df["Country (HQ)"] != "Israel"]
@@ -511,12 +468,7 @@ def FindMultiValuedColumns(df):
 
 
 # %%
-FindMultiValuedColumns(df)
-
-# %%
-encoded = np.intersect1d(df.columns, FindMultiValuedColumns(df))
-
-# %%
+encoded = FindMultiValuedColumns(df)
 encoded
 
 # %%
@@ -541,23 +493,29 @@ sharedColumns = [
         "Market Categories",
         "Market Categories (Acquiring)",
     ],
+    [
+        True,
+        "Company",
+        "Acquiring Company",
+        "Acquired Companies",
+    ],
+    [
+        True,
+        "Founders",
+        "Board Members",
+    ],
 ]
 
 # %%
-encoded = encoded.tolist()
-
-# %%
 for sharedColumn in sharedColumns:
-    print(sharedColumn[1:][0])
     categories = getUniqueLabels(
         SplitMultiValuedColumn(mergeDfColumns(df, sharedColumn[1:]))
     )
-    print(categories)
     for column in sharedColumn[1:]:
         if sharedColumn[0]:
-            print(encodeMultiValuedCategory(df, column, categories=categories))
+            encodeMultiValuedCategory(df, column, categories=categories)
         else:
-            print(encodeCategory(df,column,categories=categories))
+            encodeCategory(df,column,categories=categories)
         encoded.append(column)
 
 # %%
@@ -567,47 +525,18 @@ multiVAluedColumns = FindMultiValuedColumns(
 multiVAluedColumns
 
 # %%
-df["Board Members"]
-
-# %%
 for label in multiVAluedColumns:
-    print(encodeMultiValuedCategory(df, label)[:5])
+    encodeMultiValuedCategory(df, label)
     encoded.append(label)
 
 # %%
-df["Terms"][:5]
-
-# %%
-df.drop(encoded, axis=1).columns
-
-# %%
-# %%
-unencoded = [
-    'Status',
-    'Acquiring Company',
-    'Company',
-]
-# %%
-for col in unencoded:
-    print(encodeCategory(df, col))
-
-
-# %%
-founders
+encodeCategory(df, 'Status')
 
 # %%
 for i in FindMultiValuedColumns(founders):
-    print(encodeMultiValuedCategory(founders, i))
+    encodeMultiValuedCategory(founders, i)
 encodeCategory(founders, "Name")
-
-# %%
-founders
-
-# %%
-df.loc[0]
-
-# %%
-df.head()
+print()
 
 # %%
 """
@@ -620,7 +549,7 @@ df.head()
 """
 
 # %%
-
+df.loc[0]
 
 # %%
 numeric_cols = [
@@ -752,21 +681,6 @@ df.isnull().sum().sum()  # Tagline
 
 
 # %%
-numeric_df = df.select_dtypes(include=[float, int])
-correlations = numeric_df.drop("Price", axis=1).apply(
-    lambda x: abs(x.corr(numeric_df["Price"], method="kendall"))
-)
-
-# %%
-numeric_df
-
-# %%
-correlations.sort_values(ascending=False)
-
-# %%
-df.head()
-
-# %%
 df["Tagline"].isnull().sum()
 
 # %%
@@ -776,28 +690,34 @@ df["Tagline"] = acquired["Tagline"].fillna("")
 # %%
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-df['Tagline_Embedding'] = acquired['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
-df['Tagleline (acquiring)_Emb']=acquiring['Tagline (Acquiring)'].apply(lambda x: model.encode(str(x)).tolist())
-df["Tagline_Embedding"] = acquired["Tagline"].apply(
-    lambda x: model.encode(str(x)).tolist()
-)
-df["Tagleline (aquiring)_Emb"] = acquiring["Tagline (Acquiring)"].apply(
-    lambda x: model.encode(str(x)).tolist()
-)
+df['Tagline'] = df['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
+df['Tagline (Acquiring)']=df['Tagline (Acquiring)'].apply(lambda x: model.encode(str(x)).tolist())
 
 
 # %%
-df = df.drop("Tagline", axis=1)
-df = df.drop("Tagline (Acquiring)", axis=1)
+df.head(3)
 
 # %%
-df.head()
+
+# Select categorical columns
+categorical_df = df[['Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)', 'Price','Acquiring Company','City (HQ)', 'State / Region (HQ)', 'Country (HQ)','Status']]
+#                                                                                                                                                                                                                                        ,,,,,,'Acquired Companies (Acquiring)','Founders (Acquiring)','Board Members (Acquiring)','Terms (Acquisitions)', 'Tagline_Embedding', 'Tagleline (aquiring)_Emb'
+# Select numerical columns
+numerical_df = df[['Price','Age on acquisition','Year Founded (Acquiring)', 'IPO','Number of Employees', 'Total Funding ($)', 'Number of Acquisitions',]]
+
+cat_correlations = categorical_df.drop("Price", axis=1).apply(
+lambda x: abs(x.corr(categorical_df["Price"], method="kendall")))
+
+num_correlations = numerical_df.drop("Price", axis=1).apply(
+    lambda x: abs(x.corr(numerical_df["Price"], method="pearson"))
+)
+print(num_correlations.sort_values(ascending=False))
+print(cat_correlations.sort_values(ascending=False))
 
 # %%
 """
 # TODO
 * scaling
-* outliers
 * What to do with founders
 * Not everything should be imputed
 * report
