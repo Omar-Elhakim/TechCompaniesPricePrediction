@@ -317,12 +317,6 @@ for i, row1 in df.iterrows():
                 df.at[i, col] = row2[col]
 
 # %%
-np.intersect1d(df["Company"].values, founders["Companies"].values)
-
-# %%
-np.intersect1d(df["Founders"].dropna().unique(), founders["Name"].values)
-
-# %%
 """
 Delete duplicate columns , and already used columns
 """
@@ -396,17 +390,6 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 
 # %%
 """
-One hot encoding:
-* status
-* terms
-* countries
-"""
-
-# %%
-df.loc[0]
-
-# %%
-"""
 ### Splitting each multi-valued category to an array of categories
 """
 
@@ -441,37 +424,6 @@ def getUniqueLabels(column):
             if ((label != "None") and (label not in uniqueLabels)):
                 uniqueLabels.append(label)
     return uniqueLabels
-
-# %%
-marketCategories=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories'].dropna()))
-
-# %%
-for category in marketCategories:
-    df[category] = df['Market Categories'].apply(lambda x: 1 if ((type(x)!=float) and (category in x)) else 0)
-
-# %%
-marketCategoriesAcquiring=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories (Acquiring)'].dropna()))
-
-# %%
-for category in marketCategoriesAcquiring:
-    df[category+' (Acquiring)'] = df['Market Categories (Acquiring)'].apply(lambda x: 1 if ((type(x)!=float) and x and (category in x)) else 0)
-
-# %%
-np.intersect1d(marketCategories,marketCategoriesAcquiring)
-
-# %%
-s=0
-for c in df.columns:
-    try:
-        if df[c].sum()<2:
-            print(c)
-            s+=1
-    except:
-        pass
-print(s)
-
-# %%
-df_pandas_encoded = pd.get_dummies(df, columns=['Market Categories'], drop_first=True)
 
 # %%
 def encodeMultiValuedCategory(df, label: str, categories=[]):
@@ -523,10 +475,78 @@ def FindMultiValuedColumns(df):
 
 
 # %%
-encoded = FindMultiValuedColumns(df)
-encoded
+oneHotEncoded=['Status' , 'Country (HQ)', 'Country (HQ) (Acquiring)','City (HQ)','City (HQ) (Acquiring)','State / Region (HQ)','State / Region (HQ) (Acquiring)']
 
 # %%
+df_pandas_encoded = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
+
+# %%
+df=df.drop(oneHotEncoded,axis=1)
+
+# %%
+lists=['Tagline',
+ 'Tagline (Acquiring)',
+ 'Founders',
+ 'Board Members',
+ 'Acquired Companies']
+
+# %%
+df=df.drop(lists,axis=1)
+
+# %%
+Unique=['Company']
+
+# %%
+df=df.drop(Unique,axis=1)
+
+# %%
+df.columns
+
+# %%
+df=df_pandas_encoded.drop(Unique+lists,axis=1)
+
+# %%
+df.head()
+
+# %%
+"""
+One Hot encoding market categories
+"""
+
+# %%
+marketCategories=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories'].dropna()))
+
+# %%
+for category in marketCategories:
+    df[category] = df['Market Categories'].apply(lambda x: 1 if ((type(x)!=float) and (category in x)) else 0)
+
+# %%
+marketCategoriesAcquiring=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories (Acquiring)'].dropna()))
+
+# %%
+for category in marketCategoriesAcquiring:
+    df[category+' (Acquiring)'] = df['Market Categories (Acquiring)'].apply(lambda x: 1 if ((type(x)!=float) and x and (category in x)) else 0)
+
+# %%
+"""
+One hot encoding Terms
+"""
+
+# %%
+terms=getUniqueLabels(SplitMultiValuedColumn(df['Terms'].dropna()))
+
+# %%
+for category in terms:
+    df[category] = df['Terms'].apply(lambda x: 1 if ((type(x)!=float) and x and (category in x)) else 0)
+
+# %%
+df=df.drop(['Market Categories','Market Categories (Acquiring)','Terms'],axis=1)
+
+# %%
+df.loc[0][:25]
+
+# %%
+"""
 sharedColumns = [
     [
         False,
@@ -560,8 +580,10 @@ sharedColumns = [
         "Board Members",
     ],
 ]
+"""
 
 # %%
+"""
 for sharedColumn in sharedColumns:
     categories = getUniqueLabels(
         SplitMultiValuedColumn(mergeDfColumns(df, sharedColumn[1:]))
@@ -572,26 +594,33 @@ for sharedColumn in sharedColumns:
         else:
             encodeCategory(df, column, categories=categories)
         encoded.append(column)
+"""
 
 # %%
+"""
 multiVAluedColumns = FindMultiValuedColumns(
     df.drop(["Tagline", "Tagline (Acquiring)"], axis=1)
 )
 multiVAluedColumns
+"""
 
 # %%
+"""
 for label in multiVAluedColumns:
     encodeMultiValuedCategory(df, label)
     encoded.append(label)
+"""
 
 # %%
-encodeCategory(df, "Status")
+encodeCategory(df, "Acquiring Company")
 
 # %%
+"""
 for i in FindMultiValuedColumns(founders):
     encodeMultiValuedCategory(founders, i)
 encodeCategory(founders, "Name")
 print()
+"""
 
 # %%
 """
@@ -697,6 +726,17 @@ for col in numeric_cols:
     plt.title(f"Boxplot for {col}")
     plt.show()
 
+
+# %%
+s=0
+for c in df.columns:
+    try:
+        if df[c].sum()<2:
+            print(c)
+            s+=1
+    except:
+        pass
+print(s)
 
 # %%
 """
