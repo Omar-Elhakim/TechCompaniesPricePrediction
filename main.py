@@ -14,6 +14,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
+from sklearn.decomposition import PCA
 
 # %%
 """
@@ -701,9 +702,11 @@ df.head(3)
 
 # Select categorical columns
 categorical_df = df[['Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)', 'Price','Acquiring Company','City (HQ)', 'State / Region (HQ)', 'Country (HQ)','Status']]
-#                                                                                                                                                                                                                                        ,,,,,,'Acquired Companies (Acquiring)','Founders (Acquiring)','Board Members (Acquiring)','Terms (Acquisitions)', 'Tagline_Embedding', 'Tagleline (aquiring)_Emb'
 # Select numerical columns
 numerical_df = df[['Price','Age on acquisition','Year Founded (Acquiring)', 'IPO','Number of Employees', 'Total Funding ($)', 'Number of Acquisitions',]]
+
+#merge
+applicable_df=df[['Price','Age on acquisition','Year Founded (Acquiring)', 'IPO','Number of Employees', 'Total Funding ($)', 'Number of Acquisitions','Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)', 'Price','Acquiring Company','City (HQ)', 'State / Region (HQ)', 'Country (HQ)','Status']]
 
 cat_correlations = categorical_df.drop("Price", axis=1).apply(
 lambda x: abs(x.corr(categorical_df["Price"], method="kendall")))
@@ -713,6 +716,14 @@ num_correlations = numerical_df.drop("Price", axis=1).apply(
 )
 print(num_correlations.sort_values(ascending=False))
 print(cat_correlations.sort_values(ascending=False))
+
+# %%
+pca = PCA(n_components=1)
+result = pca.fit_transform(numerical_df.dropna())
+pca.explained_variance_ratio_
+
+# %%
+plt.plot(result)
 
 # %%
 """
