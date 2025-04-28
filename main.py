@@ -12,7 +12,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from sklearn import preprocessing
-from sklearn.impute import KNNImputer,SimpleImputer
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -397,6 +397,7 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 ### Splitting each multi-valued category to an array of categories
 """
 
+
 # %%
 def mergeDfColumns(df: pd.DataFrame, columns: [str]):
     newCol = []
@@ -425,9 +426,10 @@ def getUniqueLabels(column):
     uniqueLabels = []
     for labels in column:
         for label in labels:
-            if ((label != "None") and (label not in uniqueLabels)):
+            if (label != "None") and (label not in uniqueLabels):
                 uniqueLabels.append(label)
     return uniqueLabels
+
 
 # %%
 def encodeMultiValuedCategory(df, label: str, categories=[]):
@@ -479,13 +481,21 @@ def FindMultiValuedColumns(df):
 
 
 # %%
-oneHotEncoded=['Status' , 'Country (HQ)', 'Country (HQ) (Acquiring)','City (HQ)','City (HQ) (Acquiring)','State / Region (HQ)','State / Region (HQ) (Acquiring)']
+oneHotEncoded = [
+    "Status",
+    "Country (HQ)",
+    "Country (HQ) (Acquiring)",
+    "City (HQ)",
+    "City (HQ) (Acquiring)",
+    "State / Region (HQ)",
+    "State / Region (HQ) (Acquiring)",
+]
 
 # %%
 df_pandas_encoded = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
 
 # %%
-df=df.drop(oneHotEncoded,axis=1)
+df = df.drop(oneHotEncoded, axis=1)
 
 # %%
 """
@@ -493,14 +503,16 @@ These columns contain lists that can't be given to the model , and one hot encod
 """
 
 # %%
-lists=['Tagline',
- 'Tagline (Acquiring)',
- 'Founders',
- 'Board Members',
- 'Acquired Companies']
+lists = [
+    "Tagline",
+    "Tagline (Acquiring)",
+    "Founders",
+    "Board Members",
+    "Acquired Companies",
+]
 
 # %%
-df=df.drop(lists,axis=1)
+df = df.drop(lists, axis=1)
 
 # %%
 """
@@ -508,10 +520,10 @@ The acwuired company is unique for every value
 """
 
 # %%
-df=df.drop('Company',axis=1)
+df = df.drop("Company", axis=1)
 
 # %%
-df=df_pandas_encoded.drop(['Company']+lists,axis=1)
+df = df_pandas_encoded.drop(["Company"] + lists, axis=1)
 
 # %%
 """
@@ -519,18 +531,26 @@ One Hot encoding market categories
 """
 
 # %%
-marketCategories=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories'].dropna()))
+marketCategories = getUniqueLabels(
+    SplitMultiValuedColumn(df["Market Categories"].dropna())
+)
 
 # %%
 for category in marketCategories:
-    df[category] = df['Market Categories'].apply(lambda x: 1 if ((type(x)!=float) and (category in x)) else 0)
+    df[category] = df["Market Categories"].apply(
+        lambda x: 1 if ((type(x) != float) and (category in x)) else 0
+    )
 
 # %%
-marketCategoriesAcquiring=getUniqueLabels(SplitMultiValuedColumn(df['Market Categories (Acquiring)'].dropna()))
+marketCategoriesAcquiring = getUniqueLabels(
+    SplitMultiValuedColumn(df["Market Categories (Acquiring)"].dropna())
+)
 
 # %%
 for category in marketCategoriesAcquiring:
-    df[category+' (Acquiring)'] = df['Market Categories (Acquiring)'].apply(lambda x: 1 if ((type(x)!=float) and x and (category in x)) else 0)
+    df[category + " (Acquiring)"] = df["Market Categories (Acquiring)"].apply(
+        lambda x: 1 if ((type(x) != float) and x and (category in x)) else 0
+    )
 
 # %%
 """
@@ -538,11 +558,13 @@ One hot encoding Terms
 """
 
 # %%
-terms=getUniqueLabels(SplitMultiValuedColumn(df['Terms'].dropna()))
+terms = getUniqueLabels(SplitMultiValuedColumn(df["Terms"].dropna()))
 
 # %%
 for category in terms:
-    df[category] = df['Terms'].apply(lambda x: 1 if ((type(x)!=float) and x and (category in x)) else 0)
+    df[category] = df["Terms"].apply(
+        lambda x: 1 if ((type(x) != float) and x and (category in x)) else 0
+    )
 
 # %%
 """
@@ -550,7 +572,7 @@ Delete the original columns
 """
 
 # %%
-df=df.drop(['Market Categories','Market Categories (Acquiring)','Terms'],axis=1)
+df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
 
 # %%
 encodeCategory(df, "Acquiring Company")
@@ -661,25 +683,26 @@ for col in numeric_cols:
 
 
 # %%
-s=0
-cats=[]
+s = 0
+cats = []
 for c in df.columns:
     try:
-        if df[c].sum()==1:
+        if df[c].sum() == 1:
             print(c)
             cats.append(c)
-            s+=1
+            s += 1
     except:
         pass
 print(s)
 
 # %%
-df=df.drop(cats,axis=1)
+df = df.drop(cats, axis=1)
 
 # %%
 """
 ### Imputing the null values
 """
+
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
@@ -698,17 +721,18 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
 
     categorical_df = categorical_df.astype(str)
 
-    cat_imputer = SimpleImputer(strategy='most_frequent')
+    cat_imputer = SimpleImputer(strategy="most_frequent")
     cat_imputed_array = cat_imputer.fit_transform(categorical_df)
-    cat_imputed_df = pd.DataFrame(cat_imputed_array, columns=categorical_cols, index=df_copy.index)
+    cat_imputed_df = pd.DataFrame(
+        cat_imputed_array, columns=categorical_cols, index=df_copy.index
+    )
     df_copy[categorical_cols] = cat_imputed_df
 
     return df_copy
 
+
 # %%
-must_not_be_null = [
-    'Price', 'Acquiring Company',    'Year of acquisition announcement'
-]
+must_not_be_null = ["Price", "Acquiring Company", "Year of acquisition announcement"]
 
 df = df.dropna(subset=must_not_be_null)
 
@@ -738,7 +762,7 @@ df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 df.isnull().sum().sum()
 
 # %%
-df=df.dropna() #drop the nulls caused by scaling
+df = df.dropna()  # drop the nulls caused by scaling
 
 # %%
 num_correlations = df[cols_to_scale].apply(
@@ -763,7 +787,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 
 # %%
-reg=GradientBoostingRegressor()
+reg = GradientBoostingRegressor()
 
 reg.fit(X_train, y_train)
 
@@ -776,14 +800,14 @@ scores = cross_val_score(reg, X_train, y_train, scoring="neg_mean_squared_error"
 
 mse_scores = -scores
 
-print('Averege CV MSE Error: ',np.mean(mse_scores))
+print("Averege CV MSE Error: ", np.mean(mse_scores))
 
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
 
 
 # %%
-reg=RandomForestRegressor()
+reg = RandomForestRegressor()
 
 reg.fit(X_train, y_train)
 
@@ -796,14 +820,14 @@ scores = cross_val_score(reg, X_train, y_train, scoring="neg_mean_squared_error"
 
 mse_scores = -scores
 
-print('Averege CV MSE Error: ',np.mean(mse_scores))
+print("Averege CV MSE Error: ", np.mean(mse_scores))
 
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
 
 
 # %%
-reg=LinearRegression()
+reg = LinearRegression()
 
 reg.fit(X_train, y_train)
 
@@ -816,7 +840,7 @@ scores = cross_val_score(reg, X_train, y_train, scoring="neg_mean_squared_error"
 
 mse_scores = -scores
 
-print('Averege CV MSE Error: ',np.mean(mse_scores))
+print("Averege CV MSE Error: ", np.mean(mse_scores))
 
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
