@@ -14,6 +14,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
+from sklearn.decomposition import PCA
 
 # %%
 """
@@ -713,6 +714,14 @@ num_correlations = numerical_df.drop("Price", axis=1).apply(
 )
 print(num_correlations.sort_values(ascending=False))
 print(cat_correlations.sort_values(ascending=False))
+
+
+pca = PCA(n_components=2)
+pca.fit(categorical_df.dropna())
+result = pca.transform(categorical_df.dropna())
+result
+print(result)
+print(pca.explained_variance_ratio_)
 
 # %%
 """
