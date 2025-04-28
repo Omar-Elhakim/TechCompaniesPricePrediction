@@ -413,7 +413,6 @@ df.loc[0]
 ### Splitting each multi-valued category to an array of categories
 """
 
-
 # %%
 def mergeDfColumns(df: pd.DataFrame, columns: [str]):
     newCol = []
@@ -677,7 +676,6 @@ for col in numeric_cols:
 """
 ### Imputing the null values
 """
-
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
