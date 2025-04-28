@@ -153,23 +153,6 @@ acquisitions["Price"] = [
 ]
 
 # %%
-"""
-acquired["Price"] = None
-acquired["Year of acquisition announcement"] = None
-"""
-
-# %%
-"""
-for i, company in enumerate(acquisitions["Acquired Company"]):
-    acquired.loc[acquired["Company"] == company, "Price"] = acquisitions.iloc[i][
-        "Price"
-    ]
-    acquired.loc[acquired["Company"] == company, "Year of acquisition announcement"] = (
-        acquisitions.iloc[i]["Year of acquisition announcement"]
-    )
-"""
-
-# %%
 fig = px.scatter(
     acquisitions,
     x="Year of acquisition announcement",
@@ -239,13 +222,28 @@ Dropping 'year of last update' of the number of employees , because we don't nee
 """
 
 # %%
-acquiring = acquiring.drop("Number of Employees (year of last update)", axis=1)
+acquiring.loc[
+    acquiring["Number of Employees (year of last update)"] == 2104,
+    "Number of Employees (year of last update)",
+] = 2014
+acquiring.loc[
+    acquiring["Number of Employees (year of last update)"] == 2103,
+    "Number of Employees (year of last update)",
+] = 2013
+
+# %%
+acquiring['Years Since Last Update of # Employees']=2025-acquiring['Number of Employees (year of last update)']
 
 # %%
 acquiring["IPO"].value_counts()[:5]
 
 # %%
-acquiring.loc[acquiring["IPO"] == "Not yet", "IPO"] = None
+"""
+None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
+"""
+
+# %%
+acquiring=acquiring[acquiring['IPO']!='Not yet']
 
 # %%
 acquiring["Number of Employees"] = [
@@ -267,6 +265,9 @@ founders = founders.drop("Image", axis=1)
 * The ID doesn't add any new info
 * The News and News link don't add any info or details about the acquisition
 """
+
+# %%
+acquisitions['News'].values[:10]
 
 # %%
 acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
@@ -311,6 +312,12 @@ for i, row1 in df.iterrows():
         if row1["Acquisitions ID"] == row2["Acquisitions ID (Acquisitions)"]:
             for col in acquisitions.columns:
                 df.at[i, col] = row2[col]
+
+# %%
+np.intersect1d(df['Company'].values,founders['Companies'].values)
+
+# %%
+np.intersect1d(df['Founders'].dropna().unique(),founders['Name'].values)
 
 # %%
 """
@@ -383,6 +390,20 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(
 counts = df["Country (HQ)"].value_counts()
 rare_countries = counts[counts < 3].index
 df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
+
+# %%
+"""
+One hot encoding:
+* status
+* terms
+* countries
+"""
+
+# %%
+len(df[' (HQ)'].unique())
+
+# %%
+df.loc[0]
 
 # %%
 """
@@ -690,6 +711,9 @@ df["Tagline"] = acquired["Tagline"].fillna("")
 
 
 # %%
+df=df.dropna()
+
+# %%
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 df['Tagline'] = df['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
@@ -714,23 +738,20 @@ scaler = MinMaxScaler()
 df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 
 # %%
-df.loc[0]
-
-# %%
 
 # Select categorical columns
-categorical_df = df[['Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)', 'Price','Acquiring Company','City (HQ)', 'State / Region (HQ)', 'Country (HQ)','Status']]
+categorical_df = df[['Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)','Acquiring Company','City (HQ) (Acquiring)', 'State / Region (HQ) (Acquiring)', 'Country (HQ) (Acquiring)','Status']]
 # Select numerical columns
-numerical_df = df[['Price','Age on acquisition','Year Founded (Acquiring)', 'IPO','Number of Employees', 'Total Funding ($)', 'Number of Acquisitions',]]
+numerical_df = df[['Age on acquisition','Year Founded (Acquiring)', 'IPO','Number of Employees', 'Total Funding ($)', 'Number of Acquisitions',]]
 
 #merge
-applicable_df=df[['Price','Age on acquisition','Year Founded (Acquiring)', 'IPO','Number of Employees', 'Total Funding ($)', 'Number of Acquisitions','Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)', 'Price','Acquiring Company','City (HQ)', 'State / Region (HQ)', 'Country (HQ)','Status']]
+applicable_df=df[['Age on acquisition','Year Founded (Acquiring)', 'IPO','Number of Employees', 'Total Funding ($)', 'Number of Acquisitions','Company', 'City (HQ)', 'State / Region (HQ)', 'Country (HQ)','Acquiring Company','City (HQ) (Acquiring)', 'State / Region (HQ) (Acquiring)', 'Country (HQ) (Acquiring)','Status']]
 
-cat_correlations = categorical_df.drop("Price", axis=1).apply(
-lambda x: abs(x.corr(categorical_df["Price"], method="kendall")))
+cat_correlations = categorical_df.apply(
+lambda x: abs(x.corr(df["Price"], method="kendall")))
 
-num_correlations = numerical_df.drop("Price", axis=1).apply(
-    lambda x: abs(x.corr(numerical_df["Price"], method="pearson"))
+num_correlations = numerical_df.apply(
+    lambda x: abs(x.corr(df["Price"], method="pearson"))
 )
 print(num_correlations.sort_values(ascending=False))
 print(cat_correlations.sort_values(ascending=False))
@@ -742,6 +763,54 @@ pca.explained_variance_ratio_
 
 # %%
 plt.plot(result)
+
+# %%
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
+# Split into training and testing
+X_train, X_test, y_train, y_test = train_test_split(df.drop(['Price','Tagline',
+ 'Market Categories',
+ 'Tagline (Acquiring)',
+ 'Market Categories (Acquiring)',
+ 'Founders',
+ 'Board Members',
+ 'Acquired Companies',
+ 'Terms'],axis=1), df['Price'], test_size=0.2, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(result,df['Price'], test_size=0.2, random_state=42)
+
+reg = RandomForestRegressor()
+reg.fit(X_train, y_train)
+
+# Predict on test set
+y_pred = reg.predict(X_test)
+
+# Evaluate the regression performance
+mse = mean_squared_error(y_test, y_pred)
+print(f"Mean Squared Error: {mse:.4f}")
+
+# %%
+from sklearn.model_selection import cross_val_score
+
+# Cross-validate with 5 folds
+scores = cross_val_score(reg, X_train, y_train, scoring='neg_mean_squared_error', cv=10)
+
+# Scores will be negative because sklearn treats bigger = better. So take the negative.
+mse_scores = -scores
+
+print("MSE scores on each fold:", mse_scores)
+print("Average MSE:", np.mean(mse_scores))
+
+# %%
+from sklearn.metrics import r2_score
+
+r2 = r2_score(y_test, y_pred)
+print(f"R^2 score: {r2:.4f}")
+
+
+# %%
+
 
 # %%
 """
