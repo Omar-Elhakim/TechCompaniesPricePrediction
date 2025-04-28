@@ -554,13 +554,11 @@ for label in multiVAluedColumns:
 
 # %%
 encodeCategory(df, 'Status')
-
 # %%
 for i in FindMultiValuedColumns(founders):
     encodeMultiValuedCategory(founders, i)
 encodeCategory(founders, "Name")
 print()
-
 # %%
 """
 # Checking outliers for actual numeric values
