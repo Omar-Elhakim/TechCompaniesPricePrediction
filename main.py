@@ -7,15 +7,19 @@ Imports
 import pandas as pd
 import numpy as np
 import requests
-from sklearn import preprocessing
-from sklearn.impute import KNNImputer,SimpleImputer
 from scipy.stats import shapiro
 import plotly.express as px
 import matplotlib.pyplot as plt
-import seaborn as sns
-from sentence_transformers import SentenceTransformer
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.decomposition import PCA
+from sklearn import preprocessing
+from sklearn.impute import KNNImputer,SimpleImputer
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import r2_score
+import seaborn as sns
 
 # %%
 """
@@ -484,6 +488,11 @@ df_pandas_encoded = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
 df=df.drop(oneHotEncoded,axis=1)
 
 # %%
+"""
+These columns contain lists that can't be given to the model , and one hot encoding them isn't effiecent
+"""
+
+# %%
 lists=['Tagline',
  'Tagline (Acquiring)',
  'Founders',
@@ -494,19 +503,15 @@ lists=['Tagline',
 df=df.drop(lists,axis=1)
 
 # %%
-Unique=['Company']
+"""
+The acwuired company is unique for every value
+"""
 
 # %%
-df=df.drop(Unique,axis=1)
+df=df.drop('Company',axis=1)
 
 # %%
-df.columns
-
-# %%
-df=df_pandas_encoded.drop(Unique+lists,axis=1)
-
-# %%
-df.head()
+df=df_pandas_encoded.drop(['Company']+lists,axis=1)
 
 # %%
 """
@@ -540,87 +545,15 @@ for category in terms:
     df[category] = df['Terms'].apply(lambda x: 1 if ((type(x)!=float) and x and (category in x)) else 0)
 
 # %%
+"""
+Delete the original columns
+"""
+
+# %%
 df=df.drop(['Market Categories','Market Categories (Acquiring)','Terms'],axis=1)
 
 # %%
-df.loc[0][:25]
-
-# %%
-"""
-sharedColumns = [
-    [
-        False,
-        "City (HQ)",
-        "City (HQ) (Acquiring)",
-    ],
-    [
-        False,
-        "Country (HQ)",
-        "Country (HQ) (Acquiring)",
-    ],
-    [
-        False,
-        "State / Region (HQ)",
-        "State / Region (HQ) (Acquiring)",
-    ],
-    [
-        True,
-        "Market Categories",
-        "Market Categories (Acquiring)",
-    ],
-    [
-        True,
-        "Company",
-        "Acquiring Company",
-        "Acquired Companies",
-    ],
-    [
-        True,
-        "Founders",
-        "Board Members",
-    ],
-]
-"""
-
-# %%
-"""
-for sharedColumn in sharedColumns:
-    categories = getUniqueLabels(
-        SplitMultiValuedColumn(mergeDfColumns(df, sharedColumn[1:]))
-    )
-    for column in sharedColumn[1:]:
-        if sharedColumn[0]:
-            encodeMultiValuedCategory(df, column, categories=categories)
-        else:
-            encodeCategory(df, column, categories=categories)
-        encoded.append(column)
-"""
-
-# %%
-"""
-multiVAluedColumns = FindMultiValuedColumns(
-    df.drop(["Tagline", "Tagline (Acquiring)"], axis=1)
-)
-multiVAluedColumns
-"""
-
-# %%
-"""
-for label in multiVAluedColumns:
-    encodeMultiValuedCategory(df, label)
-    encoded.append(label)
-"""
-
-# %%
 encodeCategory(df, "Acquiring Company")
-
-# %%
-"""
-for i in FindMultiValuedColumns(founders):
-    encodeMultiValuedCategory(founders, i)
-encodeCategory(founders, "Name")
-print()
-"""
 
 # %%
 """
@@ -802,27 +735,16 @@ scaler = MinMaxScaler()
 df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 
 # %%
+df.isnull().sum().sum()
+
+# %%
+df=df.dropna() #drop the nulls caused by scaling
+
+# %%
 num_correlations = df[cols_to_scale].apply(
     lambda x: abs(x.corr(df["Price"], method="pearson"))
 )
-num_correlations.sort_values(ascending=False)[:20]
-
-# %%
-df=df.dropna()
-
-# %%
-# pca = PCA(n_components=2)
-# result = pca.fit_transform(df)
-# pca.explained_variance_ratio_
-
-# %%
-plt.plot(result)
-
-# %%
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-
+num_correlations.sort_values(ascending=False)
 
 # %%
 
@@ -841,34 +763,60 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 
 # %%
-"""
-X_train, X_test, y_train, y_test = train_test_split(result,df['Price'], test_size=0.2, random_state=42)
-"""
+reg=GradientBoostingRegressor()
 
-# %%
-reg = RandomForestRegressor()
 reg.fit(X_train, y_train)
 
-# %%
-
-# Predict on test set
 y_pred = reg.predict(X_test)
 
-# Evaluate the regression performance
 mse = mean_squared_error(y_test, y_pred)
 print(f"Mean Squared Error: {mse:.4f}")
-
-# %%
-from sklearn.model_selection import cross_val_score
 
 scores = cross_val_score(reg, X_train, y_train, scoring="neg_mean_squared_error", cv=10)
 
 mse_scores = -scores
 
-np.mean(mse_scores)
+print('Averege CV MSE Error: ',np.mean(mse_scores))
+
+r2 = r2_score(y_test, y_pred)
+print(f"R^2 score: {r2:.4f}")
+
 
 # %%
-from sklearn.metrics import r2_score
+reg=RandomForestRegressor()
+
+reg.fit(X_train, y_train)
+
+y_pred = reg.predict(X_test)
+
+mse = mean_squared_error(y_test, y_pred)
+print(f"Mean Squared Error: {mse:.4f}")
+
+scores = cross_val_score(reg, X_train, y_train, scoring="neg_mean_squared_error", cv=10)
+
+mse_scores = -scores
+
+print('Averege CV MSE Error: ',np.mean(mse_scores))
+
+r2 = r2_score(y_test, y_pred)
+print(f"R^2 score: {r2:.4f}")
+
+
+# %%
+reg=LinearRegression()
+
+reg.fit(X_train, y_train)
+
+y_pred = reg.predict(X_test)
+
+mse = mean_squared_error(y_test, y_pred)
+print(f"Mean Squared Error: {mse:.4f}")
+
+scores = cross_val_score(reg, X_train, y_train, scoring="neg_mean_squared_error", cv=10)
+
+mse_scores = -scores
+
+print('Averege CV MSE Error: ',np.mean(mse_scores))
 
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
