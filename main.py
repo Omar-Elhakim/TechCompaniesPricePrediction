@@ -676,6 +676,13 @@ plt.show()
 
 
 # %%
+q1 = df["Age on acquisition"].quantile(0.25)
+q3 = df["Age on acquisition"].quantile(0.75)
+iqr = q3 - q1
+
+lower_bound = q1 - 1.5 * iqr
+upper_bound = q3 + 1.5 * iqr
+
 median_value = df["Age on acquisition"].median()
 df["Age on acquisition"] = df["Age on acquisition"].apply(
     lambda x: median_value if x < lower_bound or x > upper_bound else x
@@ -770,20 +777,15 @@ df.head()
 df["Tagline"].isnull().sum()
 
 # %%
-df["Tagline"] = acquired["Tagline"].fillna("")
+df["Tagline"] = df  ["Tagline"].fillna("")
 
 
 # %%
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-df['Tagline_Embedding'] = acquired['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
-df['Tagleline (acquiring)_Emb']=acquiring['Tagline (Acquiring)'].apply(lambda x: model.encode(str(x)).tolist())
-df["Tagline_Embedding"] = acquired["Tagline"].apply(
-    lambda x: model.encode(str(x)).tolist()
-)
-df["Tagleline (aquiring)_Emb"] = acquiring["Tagline (Acquiring)"].apply(
-    lambda x: model.encode(str(x)).tolist()
-)
+df['Tagline_Embedding'] = df['Tagline'].apply(lambda x: model.encode(str(x)).tolist())
+df['Tagleline (acquiring)_Emb']=df['Tagline (Acquiring)'].apply(lambda x: model.encode(str(x)).tolist())
+
 
 
 # %%
@@ -792,6 +794,21 @@ df = df.drop("Tagline (Acquiring)", axis=1)
 
 # %%
 df.head()
+
+
+
+#tagline_embeddings = np.array(df['Tagline_Embedding'].tolist())
+#tagline_acq_embeddings = np.array(df['Tagleline (acquiring)_Emb'].tolist())
+
+#tagline_emb_cols = [f"Tagline_Emb_{i}" for i in range(tagline_embeddings.shape[1])]
+#tagline_acq_emb_cols = [f"Tagline_Acq_Emb_{i}" for i in range(tagline_acq_embeddings.shape[1])]
+
+#df_embeddings = pd.DataFrame(
+#    data=np.hstack([tagline_embeddings, tagline_acq_embeddings]),
+#    columns=tagline_emb_cols + tagline_acq_emb_cols,
+#    index=df.index
+#)
+df = df.drop(['Tagline_Embedding', 'Tagleline (acquiring)_Emb'], axis=1)
 
 # %%
 """
@@ -802,3 +819,50 @@ df.head()
 * Not everything should be imputed
 * report
 """
+
+
+
+df = df.dropna()
+print(df.isnull().sum())
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import cross_val_score
+
+scaler = StandardScaler()
+
+columns_to_scale = ['Price', 'Age on acquisition', 'Number of Employees', 'Total Funding ($)', 'Number of Acquisitions']
+
+df[columns_to_scale] = scaler.fit_transform(df[columns_to_scale])
+
+X = df.drop(columns=['Price'])
+y = df['Price']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+print(X_train.shape)
+print(X_train.dtypes)
+print(X_train.head())
+print(y_train.shape)
+print(type(y_train))
+
+
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# y_pred = model.predict(X_test)
+
+
+# mse = mean_squared_error(y_test, y_pred)
+# r2 = r2_score(y_test, y_pred)
+
+# print(f'MSE: {mse}')
+# print(f'R-Squared: {r2}')
+
+# cv_scores = cross_val_score(model, X, y, cv=5, scoring='neg_mean_squared_error')
+
+# print(f'Cross-validation MSE: {cv_scores.mean()}')
