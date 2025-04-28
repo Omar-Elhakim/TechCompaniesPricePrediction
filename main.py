@@ -14,6 +14,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 
 # %%
@@ -696,7 +697,24 @@ df['Tagline (Acquiring)']=df['Tagline (Acquiring)'].apply(lambda x: model.encode
 
 
 # %%
-df.head(3)
+cols_to_scale = [
+    'Year Founded',
+    'Year Founded (Acquiring)',
+    'IPO',
+    'Number of Employees',
+    'Year of acquisition announcement',
+    'Total Funding ($)',
+    'Number of Acquisitions',
+    'Price',
+    'Age on acquisition'
+]
+
+scaler = MinMaxScaler()
+
+df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
+
+# %%
+df.loc[0]
 
 # %%
 
@@ -718,8 +736,8 @@ print(num_correlations.sort_values(ascending=False))
 print(cat_correlations.sort_values(ascending=False))
 
 # %%
-pca = PCA(n_components=1)
-result = pca.fit_transform(numerical_df.dropna())
+pca = PCA(n_components=2)
+result = pca.fit_transform(applicable_df.dropna())
 pca.explained_variance_ratio_
 
 # %%
