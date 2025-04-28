@@ -760,7 +760,7 @@ df.isnull().sum().sum()  # Tagline
 
 # %%
 numeric_df = df.select_dtypes(include=[float, int])
-correlations = numeric_df.drop("Price", axis=1).apply(
+correlations = numeric_df.drop("Price", axis=1).apply(  
     lambda x: abs(x.corr(numeric_df["Price"], method="kendall"))
 )
 
