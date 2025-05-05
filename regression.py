@@ -43,6 +43,7 @@ founders = pd.read_csv("Data/Founders and Board Members.csv")
 founders.iloc[0]
 
 
+
 # %%
 def ValidateLink(url, timeout=15):
     session = requests.Session()
@@ -244,7 +245,6 @@ acquiring["Years Since Last Update of # Employees"] = (
 # %%
 acquiring["IPO"].value_counts()[:5]
 
-# %%
 """
 None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
 """
@@ -272,6 +272,7 @@ founders = founders.drop("Image", axis=1)
 * The ID doesn't add any new info
 * The News and News link don't add any info or details about the acquisition
 """
+
 
 # %%
 acquisitions["News"].values[:10]
@@ -396,6 +397,7 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 """
 ### Splitting each multi-valued category to an array of categories
 """
+
 
 
 # %%
