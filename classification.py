@@ -27,19 +27,19 @@ Reviewing a sample row from each file
 """
 
 # %%
-acquired = pd.read_csv("Data/RegressionData/Acquired Tech Companies.csv")
+acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
 acquired.iloc[0]
 
 # %%
-acquiring = pd.read_csv("Data/RegressionData/Acquiring Tech Companies.csv")
+acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
 acquiring.iloc[0]
 
 # %%
-acquisitions = pd.read_csv("Data/RegressionData/Acquisitions.csv")
+acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
 acquisitions.iloc[0]
 
 # %%
-founders = pd.read_csv("Data/RegressionData/Founders and Board Members.csv")
+founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
 founders.iloc[0]
 
 # %%
