@@ -27,21 +27,20 @@ Reviewing a sample row from each file
 """
 
 # %%
-acquired = pd.read_csv("Data/Acquired Tech Companies.csv")
+acquired = pd.read_csv("Data/RegressionData/Acquired Tech Companies.csv")
 acquired.iloc[0]
 
 # %%
-acquiring = pd.read_csv("Data/Acquiring Tech Companies.csv")
+acquiring = pd.read_csv("Data/RegressionData/Acquiring Tech Companies.csv")
 acquiring.iloc[0]
 
 # %%
-acquisitions = pd.read_csv("Data/Acquisitions.csv")
+acquisitions = pd.read_csv("Data/RegressionData/Acquisitions.csv")
 acquisitions.iloc[0]
 
 # %%
-founders = pd.read_csv("Data/Founders and Board Members.csv")
+founders = pd.read_csv("Data/RegressionData/Founders and Board Members.csv")
 founders.iloc[0]
-
 
 
 # %%
@@ -245,6 +244,7 @@ acquiring["Years Since Last Update of # Employees"] = (
 # %%
 acquiring["IPO"].value_counts()[:5]
 
+# %%
 """
 None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
 """
@@ -272,7 +272,6 @@ founders = founders.drop("Image", axis=1)
 * The ID doesn't add any new info
 * The News and News link don't add any info or details about the acquisition
 """
-
 
 # %%
 acquisitions["News"].values[:10]
@@ -397,7 +396,6 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 """
 ### Splitting each multi-valued category to an array of categories
 """
-
 
 
 # %%
@@ -612,7 +610,6 @@ for col in numeric_cols:
     plt.ylabel("Frequency")
     plt.show()
 
-
 # %%
 """
 # Data isn't normally distributed so IQR method will be more efficient
@@ -641,18 +638,15 @@ sns.boxplot(x=df["Age on acquisition"])
 plt.title("Boxplot of Age on Acquisition")
 plt.show()
 
-
 # %%
 median_value = df["Age on acquisition"].median()
 df["Age on acquisition"] = df["Age on acquisition"].apply(
     lambda x: median_value if x < lower_bound or x > upper_bound else x
 )
 
-
 # %%
 for col in numeric_cols:
     print(f"{col} skew: {df[col].skew():.2f}")
-
 
 # %%
 """
@@ -662,10 +656,8 @@ for col in numeric_cols:
 # %%
 df["Total Funding ($)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
 
-
 # %%
 df["Total Funding ($)"].fillna(df["Total Funding ($)"].median(), inplace=True)
-
 
 # %%
 df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
@@ -675,14 +667,12 @@ df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
 for col in numeric_cols:
     print(f"{col} skew: {df[col].skew():.2f}")
 
-
 # %%
 for col in numeric_cols:
     plt.figure(figsize=(6, 1.5))
     sns.boxplot(x=df[col])
     plt.title(f"Boxplot for {col}")
     plt.show()
-
 
 # %%
 s = 0
@@ -773,7 +763,6 @@ num_correlations = df[cols_to_scale].apply(
 num_correlations.sort_values(ascending=False)
 
 # %%
-
 # Split into training and testing
 X_train, X_test, y_train, y_test = train_test_split(
     df.drop(
@@ -786,7 +775,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     test_size=0.3,
     random_state=42,
 )
-
 
 # %%
 reg = GradientBoostingRegressor()
@@ -807,7 +795,6 @@ print("Averege CV MSE Error: ", np.mean(mse_scores))
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
 
-
 # %%
 reg = RandomForestRegressor()
 
@@ -826,7 +813,6 @@ print("Averege CV MSE Error: ", np.mean(mse_scores))
 
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
-
 
 # %%
 reg = LinearRegression()
