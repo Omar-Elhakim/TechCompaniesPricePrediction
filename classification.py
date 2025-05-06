@@ -10,10 +10,10 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn import preprocessing
 from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.tree import DecisionTreeClassifier,DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix,classification_report
+from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 
 # %%
@@ -34,7 +34,7 @@ This is the only new column , that's what we will predict
 
 # %%
 acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
-acquisitions.iloc[0]['Deal size class']
+acquisitions.iloc[0]["Deal size class"]
 
 # %%
 founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
@@ -55,8 +55,8 @@ acquired = acquired.drop("Image", axis=1)
 
 # %%
 acquisitions = acquisitions.drop("Acquisition Profile", axis=1)
-acquiring = acquiring.drop(["CrunchBase Profile",'API'], axis=1)
-acquired = acquired.drop(["CrunchBase Profile",'API'], axis=1)
+acquiring = acquiring.drop(["CrunchBase Profile", "API"], axis=1)
+acquired = acquired.drop(["CrunchBase Profile", "API"], axis=1)
 founders = founders.drop("CrunchBase Profile", axis=1)
 
 # %%
@@ -114,9 +114,7 @@ acquired = acquired.drop("Description", axis=1)
 
 # %%
 acquired = acquired.drop(["Homepage", "Twitter"], axis=1)
-acquiring = acquiring.drop(
-    ["Homepage", "Twitter", "Acquisitions ID"], axis=1
-)
+acquiring = acquiring.drop(["Homepage", "Twitter", "Acquisitions ID"], axis=1)
 
 # %%
 acquiring.loc[
@@ -252,7 +250,9 @@ Processing countries
 df["Country (HQ)"].value_counts()
 
 # %%
-df.loc[df["Country (HQ)"]== "United Stats of AMerica","Country (HQ)"]= "United States"
+df.loc[df["Country (HQ)"] == "United Stats of AMerica", "Country (HQ)"] = (
+    "United States"
+)
 
 # %%
 counts = df["Country (HQ)"].value_counts()
@@ -260,8 +260,8 @@ rare_countries = counts[counts < 3].index
 df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 
 # %%
-df=df.infer_objects()
-df['IPO']=df['IPO'].astype(float)
+df = df.infer_objects()
+df["IPO"] = df["IPO"].astype(float)
 
 # %%
 numeric_cols = df.select_dtypes(include=[float, int]).columns
@@ -322,6 +322,7 @@ df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
 ### Imputing the null values
 """
 
+
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
 
@@ -344,11 +345,16 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
 
     return df
 
+
 # %%
 df.isnull().sum().sum()
 
 # %%
-must_not_be_null = ["Deal size class", "Acquiring Company", "Year of acquisition announcement"]
+must_not_be_null = [
+    "Deal size class",
+    "Acquiring Company",
+    "Year of acquisition announcement",
+]
 
 df = df.dropna(subset=must_not_be_null)
 
@@ -366,6 +372,7 @@ df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 ### Splitting each multi-valued category to an array of categories
 """
 
+
 # %%
 def SplitMultiValuedColumn(column):
     c = []
@@ -380,6 +387,7 @@ def SplitMultiValuedColumn(column):
             c.append(values)
     return c
 
+
 # %%
 def getUniqueLabels(column):
     uniqueLabels = []
@@ -388,6 +396,7 @@ def getUniqueLabels(column):
             if (label != "None") and (label not in uniqueLabels):
                 uniqueLabels.append(label)
     return uniqueLabels
+
 
 # %%
 def encodeCategory(df, label: str, categories=[]):
@@ -401,6 +410,7 @@ def encodeCategory(df, label: str, categories=[]):
     df.loc[nonNullIndex, label] = le.transform(
         [value.lower() for value in df.loc[nonNullIndex, label]]
     )
+
 
 # %%
 oneHotEncoded = [
@@ -439,9 +449,7 @@ One hot encoding Terms
 """
 
 # %%
-terms = getUniqueLabels(
-    SplitMultiValuedColumn(df["Terms"].dropna())
-)
+terms = getUniqueLabels(SplitMultiValuedColumn(df["Terms"].dropna()))
 for category in terms:
     df[category] = df["Terms"].apply(
         lambda x: 1 if ((type(x) != float) and (category in x)) else 0
@@ -539,5 +547,5 @@ print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
 print(classification_report(y_test, y_pred))
 
 # %%
-cm=confusion_matrix(y_test, y_pred)
-sns.heatmap(cm, annot=True,cmap='Blues')
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, annot=True, cmap="Blues")

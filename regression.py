@@ -42,6 +42,7 @@ acquisitions.iloc[0]
 founders = pd.read_csv("Data/RegressionData/Founders and Board Members.csv")
 founders.iloc[0]
 
+
 # %%
 def ValidateLink(url, timeout=15):
     session = requests.Session()
@@ -67,6 +68,7 @@ def ValidateLink(url, timeout=15):
     except Exception as e:
         return False
 
+
 # %%
 def ValidateLinks(urls):
     results = []
@@ -75,6 +77,7 @@ def ValidateLinks(urls):
         if results[-1]:
             return results
     return results
+
 
 # %%
 def ValidateLinksDF(df):
@@ -88,6 +91,7 @@ def ValidateLinksDF(df):
                     print("Try it yourself:")
                     print(df[col][0] + "\n")
                 break
+
 
 # %%
 """
@@ -393,12 +397,14 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 ### Splitting each multi-valued category to an array of categories
 """
 
+
 # %%
 def mergeDfColumns(df: pd.DataFrame, columns: [str]):
     newCol = []
     for column in columns:
         newCol = [*newCol, *df[column].dropna().tolist()]
     return newCol
+
 
 # %%
 def SplitMultiValuedColumn(column):
@@ -414,6 +420,7 @@ def SplitMultiValuedColumn(column):
             c.append(values)
     return c
 
+
 # %%
 def getUniqueLabels(column):
     uniqueLabels = []
@@ -422,6 +429,7 @@ def getUniqueLabels(column):
             if (label != "None") and (label not in uniqueLabels):
                 uniqueLabels.append(label)
     return uniqueLabels
+
 
 # %%
 def encodeMultiValuedCategory(df, label: str, categories=[]):
@@ -434,6 +442,7 @@ def encodeMultiValuedCategory(df, label: str, categories=[]):
         le.transform(values) if type(values) == list else values for values in df[label]
     ]
     return le.classes_
+
 
 # %%
 def encodeCategory(df, label: str, categories=[]):
@@ -448,6 +457,7 @@ def encodeCategory(df, label: str, categories=[]):
         [value.lower() for value in df.loc[nonNullIndex, label]]
     )
     return le.classes_
+
 
 # %%
 def FindMultiValuedColumns(df):
@@ -468,6 +478,7 @@ def FindMultiValuedColumns(df):
         except:
             pass
     return cols
+
 
 # %%
 oneHotEncoded = [
@@ -684,6 +695,7 @@ df = df.drop(cats, axis=1)
 ### Imputing the null values
 """
 
+
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
     df_copy = df.copy()
@@ -709,6 +721,7 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
     df_copy[categorical_cols] = cat_imputed_df
 
     return df_copy
+
 
 # %%
 must_not_be_null = ["Price", "Acquiring Company", "Year of acquisition announcement"]
