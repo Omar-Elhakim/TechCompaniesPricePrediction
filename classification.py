@@ -1,20 +1,28 @@
 # %%
 """
-Imports
+# Imports
 """
 
 # %%
-import pandas as pd
+import warnings
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+import pandas as pd
+import seaborn as sns
+import plotly.express as px
+import matplotlib.pyplot as plt
 from sklearn import preprocessing
+import plotly.graph_objects as go
+from datetime import datetime as d
 from sklearn.impute import KNNImputer, SimpleImputer
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
-import seaborn as sns
+
+warnings.filterwarnings('ignore')
 
 # %%
 """
@@ -22,10 +30,10 @@ Reviewing a sample row from each file
 """
 
 # %%
-acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
+acquired = pd.read_csv("Data\ClassificationData\Acquired Tech Companies.csv")
 
 # %%
-acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
+acquiring = pd.read_csv("Data\ClassificationData\Acquiring Tech Companies.csv")
 
 # %%
 """
@@ -33,25 +41,15 @@ This is the only new column , that's what we will predict
 """
 
 # %%
-acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
+acquisitions = pd.read_csv("Data\ClassificationData\Acquisitions.csv")
 acquisitions.iloc[0]["Deal size class"]
 
 # %%
-founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
-
-# %%
-"""
-* Image links are all corrupt so we will drop the column 
-"""
+founders = pd.read_csv("Data\ClassificationData\Founders and Board Members.csv")
 
 # %%
 acquiring = acquiring.drop("Image", axis=1)
 acquired = acquired.drop("Image", axis=1)
-
-# %%
-"""
-* Remove all crunchbase links
-"""
 
 # %%
 acquisitions = acquisitions.drop("Acquisition Profile", axis=1)
@@ -60,18 +58,8 @@ acquired = acquired.drop(["CrunchBase Profile", "API"], axis=1)
 founders = founders.drop("CrunchBase Profile", axis=1)
 
 # %%
-"""
-We don't need the exact address of the company, we already have the city , state and country
-"""
-
-# %%
 acquired = acquired.drop("Address (HQ)", axis=1)
 acquiring = acquiring.drop("Address (HQ)", axis=1)
-
-# %%
-"""
-There was a wrongly entered value, so I looked at the link and corrected it
-"""
 
 # %%
 acquisitions.loc[
@@ -87,30 +75,8 @@ for l in acquired.iloc[12]["Description"].split("."):
     print(l + "\n")
 
 # %%
-"""
-* 'Tagline' contains a brief and precise description of the company , while the 'Description' is very long and doesn't provide any more important details, 
-so we will drop the 'Description'
-"""
-
-# %%
 acquiring = acquiring.drop("Description", axis=1)
 acquired = acquired.drop("Description", axis=1)
-
-# %%
-"""
-### There isn't any new useful information that we can get out of those , so we will drop them
-"""
-
-# %%
-"""
-* "Homepage" column contains the link to the website of every company , and they aren't all the same so we can't apply a function or a program to extract certain information about them. To use the link , this would require us to go over into each of them one by one , which isn't  feasible
-
-
-* "Twitter" column also can't be scraped according to their new policy , tried multiple APIs and libraries but none of them worked , even twitter's free tier API is useless
- 
-
-* "Acquisition ID" is just used to link between files , and we can do that with the company's name
-"""
 
 # %%
 acquired = acquired.drop(["Homepage", "Twitter"], axis=1)
@@ -135,11 +101,6 @@ acquiring["Years Since Last Update of # Employees"] = (
 acquiring["IPO"].value_counts()[:5]
 
 # %%
-"""
-None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
-"""
-
-# %%
 acquiring = acquiring[acquiring["IPO"] != "Not yet"]
 
 # %%
@@ -149,18 +110,7 @@ acquiring["Number of Employees"] = [
 ]
 
 # %%
-"""
-The image of the founder doesn't affect anything at all ... DROPPED
-"""
-
-# %%
 founders = founders.drop("Image", axis=1)
-
-# %%
-"""
-* The specific date which the deal was announced on doesn't matter , what matters is the year so the model can know that inflation affects the price
-* The News and News link don't add any info or details about the acquisition
-"""
 
 # %%
 acquisitions["News"].values[:10]
@@ -210,9 +160,7 @@ for i, row1 in df.iterrows():
                 df.at[i, col] = row2[col]
 
 # %%
-"""
-Delete duplicate columns , and already used columns
-"""
+df.info()
 
 # %%
 df = df.drop(
@@ -227,11 +175,6 @@ df = df.drop(
 )
 
 # %%
-"""
-Another error found and corrected
-"""
-
-# %%
 df.loc[df["Year Founded"] == 1840, "Year Founded"] = 2006
 df.loc[df["Year Founded"] == 1933, "Year Founded"] = 1989
 
@@ -242,9 +185,11 @@ df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Fou
 df = df[df["Country (HQ)"] != "Israel"]
 
 # %%
-"""
-Processing countries
-"""
+df.head()
+
+
+# %%
+df.info()
 
 # %%
 df["Country (HQ)"].value_counts()
@@ -266,16 +211,6 @@ df["IPO"] = df["IPO"].astype(float)
 # %%
 numeric_cols = df.select_dtypes(include=[float, int]).columns
 categorical_cols = df.select_dtypes(include=[object]).columns
-
-# %%
-"""
-# Checking outliers for actual numeric values
-"""
-
-# %%
-"""
-# Data isn't normally distributed so IQR method will be more efficient
-"""
 
 # %%
 outliers = {}
@@ -306,22 +241,11 @@ for col in numeric_cols:
     print(f"{col} skew: {df[col].skew():.2f}")
 
 # %%
-"""
-- Skewness of Total Funding and Age on acquisition is high so we can use log transformation to avoid data skewing 
-"""
-
-# %%
 df["Total Funding ($)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
 
 # %%
 df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
 df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
-
-# %%
-"""
-### Imputing the null values
-"""
-
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
@@ -345,33 +269,36 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
 
     return df
 
+# %%
+df.isnull().sum()
 
 # %%
-df.isnull().sum().sum()
+df.dropna(inplace=True)
 
 # %%
-must_not_be_null = [
-    "Deal size class",
-    "Acquiring Company",
-    "Year of acquisition announcement",
-]
-
-df = df.dropna(subset=must_not_be_null)
-
-df = knn_impute_numeric(df)
+df.isnull().sum()
 
 # %%
-df.isnull().sum().sum()
+df.duplicated().sum()
+
+# %%
+df.info()
+
+# %%
+df.head()
+
+# %%
+df['Deal size class'].value_counts()
 
 # %%
 scaler = MinMaxScaler()
 df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 
 # %%
-"""
-### Splitting each multi-valued category to an array of categories
-"""
+df.head()
 
+# %%
+df['Years Since Last Update of # Employees'].value_counts()
 
 # %%
 def SplitMultiValuedColumn(column):
@@ -387,16 +314,15 @@ def SplitMultiValuedColumn(column):
             c.append(values)
     return c
 
-
 # %%
 def getUniqueLabels(column):
-    uniqueLabels = []
+    uniqueLabels = set()  
     for labels in column:
-        for label in labels:
-            if (label != "None") and (label not in uniqueLabels):
-                uniqueLabels.append(label)
-    return uniqueLabels
-
+        if isinstance(labels, list):  
+            for label in labels:
+                if label != "None":
+                    uniqueLabels.add(label)  
+    return list(uniqueLabels)  
 
 # %%
 def encodeCategory(df, label: str, categories=[]):
@@ -411,25 +337,17 @@ def encodeCategory(df, label: str, categories=[]):
         [value.lower() for value in df.loc[nonNullIndex, label]]
     )
 
-
 # %%
 oneHotEncoded = [
     "Status",
     "Country (HQ)",
     "Country (HQ) (Acquiring)",
-    "City (HQ)",
     "City (HQ) (Acquiring)",
-    "State / Region (HQ)",
     "State / Region (HQ) (Acquiring)",
 ]
 
 # %%
-df = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
-
-# %%
-"""
-These columns contain lists that can't be given to the model , and one hot encoding them isn't effiecent
-"""
+df = df.drop(oneHotEncoded, axis=1)
 
 # %%
 lists = [
@@ -444,11 +362,6 @@ lists = [
 df = df.drop(["Company"] + lists, axis=1)
 
 # %%
-"""
-One hot encoding Terms
-"""
-
-# %%
 terms = getUniqueLabels(SplitMultiValuedColumn(df["Terms"].dropna()))
 for category in terms:
     df[category] = df["Terms"].apply(
@@ -456,9 +369,10 @@ for category in terms:
     )
 
 # %%
-"""
-One Hot encoding market categories
-"""
+df["Market Categories"].value_counts()
+
+# %%
+df.head()
 
 # %%
 marketCategories = getUniqueLabels(
@@ -479,18 +393,26 @@ for category in marketCategoriesAcquiring:
     )
 
 # %%
-"""
-Delete the original columns
-"""
-
-# %%
 df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
 
 # %%
 encodeCategory(df, "Acquiring Company")
+encodeCategory(df, "State / Region (HQ)")
+encodeCategory(df, "Deal size class")
+encodeCategory(df, "City (HQ)")
 
 # %%
-encodeCategory(df, "Deal size class")
+df.head()
+
+# %%
+num_rows = df.shape[0]
+print(f"Number of rows: {num_rows}")
+
+# %%
+"""
+# Dropping columns with only sum = 1 to minimize the number of features
+
+"""
 
 # %%
 s = 0
@@ -515,17 +437,22 @@ num_correlations = df[numeric_cols].apply(
 num_correlations.sort_values(ascending=False)
 
 # %%
-# Split into training and testing
+df["Deal size class"].value_counts()
+
+# %%
+df.head()
+
+# %%
 X_train, X_test, y_train, y_test = train_test_split(
     df.drop(
         [
-            "Deal size class",
+            "Deal size class",  
         ],
         axis=1,
     ),
-    df["Deal size class"],
-    test_size=0.3,
-    random_state=42,
+    df["Deal size class"],  
+    test_size=0.2,  
+    random_state=42, 
 )
 
 # %%
@@ -533,19 +460,92 @@ y_train = y_train.astype(int)
 y_test = y_test.astype(int)
 
 # %%
-reg = RandomForestClassifier(random_state=67)
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.model_selection import StratifiedKFold
 
-reg.fit(X_train, y_train)
+ada_param_grid = {
+    'n_estimators': [50, 100, 150],  
+    'learning_rate': [0.01, 0.1, 1],  
+    'estimator': [DecisionTreeClassifier(max_depth=1), None]  
+}
 
-y_pred = reg.predict(X_test)
+ada_boost = AdaBoostClassifier(random_state=67)
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+ada_grid_search = GridSearchCV(ada_boost, ada_param_grid, cv=cv, n_jobs=-1, verbose=1)
+ada_grid_search.fit(X_train, y_train)
+
+print("AdaBoost Best Parameters: ", ada_grid_search.best_params_)
+print(f"AdaBoost Best Cross-Validation Accuracy: {ada_grid_search.best_score_ * 100:.2f}%")
+
+ada_best = ada_grid_search.best_estimator_
+y_pred_ada = ada_best.predict(X_test)
+
+print(f"AdaBoost Test Accuracy: {accuracy_score(y_test, y_pred_ada) * 100:.2f}%")
+print(classification_report(y_test, y_pred_ada))
+
+# %%
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.model_selection import StratifiedKFold
+
+#Random Forest Best Parameters:  {'n_estimators': 150, 'min_samples_split': 2, 'min_samples_leaf': 4, 'max_features': 'sqrt', 'max_depth': 10}
+
+rf_param_grid = {
+    'n_estimators': [50, 100, 150],  
+    'max_depth': [10, 20, None],  
+    'min_samples_split': [2, 5, 10],  
+    'min_samples_leaf': [1, 2, 4],  
+    'max_features': ['auto', 'sqrt', 'log2']  
+}
+
+rf = RandomForestClassifier(random_state=67)
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+rf_grid_search = RandomizedSearchCV(rf, rf_param_grid, cv=cv, n_jobs=-1, verbose=1)
+rf_grid_search.fit(X_train, y_train)
+
+print("Random Forest Best Parameters: ", rf_grid_search.best_params_)
+print(f"Random Forest Best Cross-Validation Accuracy: {rf_grid_search.best_score_ * 100:.2f}%")
+
+rf_best = rf_grid_search.best_estimator_
+y_pred_rf = rf_best.predict(X_test)
+
+print(f"Random Forest Test Accuracy: {accuracy_score(y_test, y_pred_rf) * 100:.2f}%")
+print(classification_report(y_test, y_pred_rf))
+
+# %%
+X_train = pd.get_dummies(X_train)
+X_test = pd.get_dummies(X_test)
+
+
+X_train, X_test = X_train.align(X_test, join='left', axis=1, fill_value=0)
+
+# %%
+from xgboost import XGBClassifier
+from sklearn.metrics import classification_report, accuracy_score
+
+model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', enable_categorical=True)
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
 
 
 # %%
-print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
+#df_corr = df.corr()
 
-# %%
-print(classification_report(y_test, y_pred))
+#plt.figure(figsize=(100, 80))
+#sns.heatmap(df_corr, annot=True, cmap='coolwarm', fmt='.2f', square=True, linewidths=0.5)
 
-# %%
-cm = confusion_matrix(y_test, y_pred)
-sns.heatmap(cm, annot=True, cmap="Blues")
+#plt.title("Correlation Matrix Heatmap")
+#plt.tight_layout()
+#plt.show() 
