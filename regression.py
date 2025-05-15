@@ -22,6 +22,15 @@ from sklearn.metrics import r2_score
 import seaborn as sns
 
 # %%
+import pickle
+
+def pickle_dump(obj, name : str):
+    file_prefix = "./Data/pickle/reg_"
+    file_name = f"{file_prefix}{name}"
+    f = open(file_name,'wb')
+    b = pickle.dump(obj,f)
+
+# %%
 """
 Reviewing a sample row from each file
 """
@@ -440,7 +449,7 @@ def encodeMultiValuedCategory(df, label: str, categories=[]):
     df[label] = [
         le.transform(values) if type(values) == list else values for values in df[label]
     ]
-    return le.classes_
+    return categories
 
 
 # %%
@@ -455,7 +464,7 @@ def encodeCategory(df, label: str, categories=[]):
     df.loc[nonNullIndex, label] = le.transform(
         [value.lower() for value in df.loc[nonNullIndex, label]]
     )
-    return le.classes_
+    return categories
 
 
 # %%
@@ -478,6 +487,10 @@ def FindMultiValuedColumns(df):
             pass
     return cols
 
+
+# %%
+# taking a snapshot of the dataframe before any encoding or imputing for comparing values
+pickle_dump(df,"df")
 
 # %%
 oneHotEncoded = [
@@ -533,6 +546,7 @@ One Hot encoding market categories
 marketCategories = getUniqueLabels(
     SplitMultiValuedColumn(df["Market Categories"].dropna())
 )
+pickle_dump(marketCategories,"marketCategories")
 
 # %%
 for category in marketCategories:
@@ -544,6 +558,7 @@ for category in marketCategories:
 marketCategoriesAcquiring = getUniqueLabels(
     SplitMultiValuedColumn(df["Market Categories (Acquiring)"].dropna())
 )
+pickle_dump(marketCategoriesAcquiring,"marketCategoriesAcquiring")
 
 # %%
 for category in marketCategoriesAcquiring:
@@ -558,6 +573,7 @@ One hot encoding Terms
 
 # %%
 terms = getUniqueLabels(SplitMultiValuedColumn(df["Terms"].dropna()))
+pickle_dump(terms,"terms")
 
 # %%
 for category in terms:
@@ -574,7 +590,10 @@ Delete the original columns
 df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
 
 # %%
-encodeCategory(df, "Acquiring Company")
+pickle_dump(
+    encodeCategory(df, "Acquiring Company")
+    ,"AcquiringCompany"
+    )
 
 # %%
 """
@@ -830,3 +849,12 @@ print("Averege CV MSE Error: ", np.mean(mse_scores))
 
 r2 = r2_score(y_test, y_pred)
 print(f"R^2 score: {r2:.4f}")
+
+
+# %%
+pickle_dump(scaler,"scaler")
+pickle_dump(reg,"model")
+
+# saving data temporarily until pipeline is production ready
+pickle_dump(y_test,"y_test_data")
+pickle_dump(X_test,"x_test_data")

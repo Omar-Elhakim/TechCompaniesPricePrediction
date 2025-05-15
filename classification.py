@@ -277,6 +277,10 @@ numeric_cols = df.select_dtypes(include=[float, int]).columns
 categorical_cols = df.select_dtypes(include=[object]).columns
 
 # %%
+# taking a snapshot of the dataframe before any encoding or imputing for comparing values
+pickle_dump(df,"df")
+
+# %%
 """
 # Checking outliers for actual numeric values
 """
@@ -576,4 +580,4 @@ pickle_dump(reg,"model")
 
 # saving data temporarily until pipeline is production ready
 pickle_dump(y_test,"y_test_data")
-pickle_dump(y_test,"x_test_data")
+pickle_dump(X_test,"x_test_data")
