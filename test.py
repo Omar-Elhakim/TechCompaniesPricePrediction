@@ -17,7 +17,7 @@ from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 
 # %%
-isClassification = True
+isClassification :bool = True
 
 import pickle
 
@@ -27,6 +27,8 @@ def pickle_load(name : str):
     print(f"Loading {file_name}")
     f = open(file_name,'rb')
     return pickle.load(f)
+
+model_df = pickle_load("df")
 
 # %%
 """
@@ -38,7 +40,6 @@ acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
 acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
 acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
 founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
-acquisitions.iloc[0]["Deal size class"]
 
 # %%
 acquiring = acquiring.drop("Image", axis=1)
@@ -249,7 +250,6 @@ df = knn_impute_numeric(df)
 
 # %%
 scaler = pickle_load("scaler")
-
 df[numeric_cols] = scaler.transform(df[numeric_cols])
 
 # %%
@@ -334,7 +334,9 @@ One hot encoding Terms
 """
 
 # %%
-terms = getUniqueLabels(SplitMultiValuedColumn(df["Terms"].dropna()))
+# terms = getUniqueLabels(SplitMultiValuedColumn(df["Terms"].dropna()))
+
+terms = pickle_load("terms")
 for category in terms:
     df[category] = df["Terms"].apply(
         lambda x: 1 if ((type(x) != float) and (category in x)) else 0
@@ -346,18 +348,21 @@ One Hot encoding market categories
 """
 
 # %%
-marketCategories = getUniqueLabels(
-    SplitMultiValuedColumn(df["Market Categories"].dropna())
-)
+# marketCategories = getUniqueLabels(
+#     SplitMultiValuedColumn(df["Market Categories"].dropna())
+# )
+marketCategories = pickle_load("marketCategories")
 for category in marketCategories:
     df[category] = df["Market Categories"].apply(
         lambda x: 1 if ((type(x) != float) and (category in x)) else 0
     )
 
 # %%
-marketCategoriesAcquiring = getUniqueLabels(
-    SplitMultiValuedColumn(df["Market Categories (Acquiring)"].dropna())
-)
+# marketCategoriesAcquiring = getUniqueLabels(
+#     SplitMultiValuedColumn(df["Market Categories (Acquiring)"].dropna())
+# )
+
+marketCategoriesAcquiring = pickle_load("marketCategoriesAcquiring")
 for category in marketCategoriesAcquiring:
     df[category + " (Acquiring)"] = df["Market Categories (Acquiring)"].apply(
         lambda x: 1 if ((type(x) != float) and x and (category in x)) else 0
@@ -373,7 +378,7 @@ df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], ax
 
 # %%
 AcquiringCompany = pickle_load("AcquiringCompany")
-encodeCategory(df, "Acquiring Company")
+encodeCategory(df, "Acquiring Company", AcquiringCompany)
 
 # %%
 """
@@ -384,6 +389,9 @@ encodeCategory(df, "Acquiring Company")
 if isClassification:
     DealSizeClass = pickle_load("DealSizeClass")
     encodeCategory(df, "Deal size class")
+else:
+    Price = pickle_load("Price")
+    encodeCategory(df, "Price")
 
 # %%
 s = 0
@@ -407,12 +415,11 @@ num_correlations.sort_values(ascending=False)
 
 # %%
 X_test = df.drop(
-    [
-        "Deal size class",
-    ],
+    [ "Deal size class",] if isClassification else ["Price",],
     axis=1
 )
-y_test = df["Deal size class"]
+
+y_test = df["Deal size class"] if isClassification else df["Price"]
 
 # %%
 y_test = y_test.astype(int)
