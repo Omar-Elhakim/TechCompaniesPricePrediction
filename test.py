@@ -15,6 +15,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
+import pickle
 
 # %%
 """
@@ -23,100 +24,37 @@ Reviewing a sample row from each file
 
 # %%
 acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
-
-# %%
 acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
-
-# %%
-"""
-This is the only new column , that's what we will predict
-"""
-
-# %%
 acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
-acquisitions.iloc[0]["Deal size class"]
-
-# %%
 founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
-
-# %%
-"""
-* Image links are all corrupt so we will drop the column 
-"""
+acquisitions.iloc[0]["Deal size class"]
 
 # %%
 acquiring = acquiring.drop("Image", axis=1)
 acquired = acquired.drop("Image", axis=1)
 
-# %%
-"""
-* Remove all crunchbase links
-"""
-
-# %%
 acquisitions = acquisitions.drop("Acquisition Profile", axis=1)
 acquiring = acquiring.drop(["CrunchBase Profile", "API"], axis=1)
 acquired = acquired.drop(["CrunchBase Profile", "API"], axis=1)
 founders = founders.drop("CrunchBase Profile", axis=1)
 
-# %%
-"""
-We don't need the exact address of the company, we already have the city , state and country
-"""
-
-# %%
 acquired = acquired.drop("Address (HQ)", axis=1)
 acquiring = acquiring.drop("Address (HQ)", axis=1)
 
-# %%
-"""
-There was a wrongly entered value, so I looked at the link and corrected it
-"""
+acquiring = acquiring.drop("Description", axis=1)
+acquired = acquired.drop("Description", axis=1)
+
+acquired = acquired.drop(["Homepage", "Twitter"], axis=1)
+acquiring = acquiring.drop(["Homepage", "Twitter", "Acquisitions ID"], axis=1)
+
+founders = founders.drop("Image", axis=1)
+acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
 
 # %%
 acquisitions.loc[
     acquisitions["Year of acquisition announcement"] == 2104,
     "Year of acquisition announcement",
 ] = 2014
-
-# %%
-acquired.iloc[12]["Tagline"]
-
-# %%
-for l in acquired.iloc[12]["Description"].split("."):
-    print(l + "\n")
-
-# %%
-"""
-* 'Tagline' contains a brief and precise description of the company , while the 'Description' is very long and doesn't provide any more important details, 
-so we will drop the 'Description'
-"""
-
-# %%
-acquiring = acquiring.drop("Description", axis=1)
-acquired = acquired.drop("Description", axis=1)
-
-# %%
-"""
-### There isn't any new useful information that we can get out of those , so we will drop them
-"""
-
-# %%
-"""
-* "Homepage" column contains the link to the website of every company , and they aren't all the same so we can't apply a function or a program to extract certain information about them. To use the link , this would require us to go over into each of them one by one , which isn't  feasible
-
-
-* "Twitter" column also can't be scraped according to their new policy , tried multiple APIs and libraries but none of them worked , even twitter's free tier API is useless
- 
-
-* "Acquisition ID" is just used to link between files , and we can do that with the company's name
-"""
-
-# %%
-acquired = acquired.drop(["Homepage", "Twitter"], axis=1)
-acquiring = acquiring.drop(["Homepage", "Twitter", "Acquisitions ID"], axis=1)
-
-# %%
 acquiring.loc[
     acquiring["Number of Employees (year of last update)"] == 2104,
     "Number of Employees (year of last update)",
@@ -125,19 +63,9 @@ acquiring.loc[
     acquiring["Number of Employees (year of last update)"] == 2103,
     "Number of Employees (year of last update)",
 ] = 2013
-
-# %%
 acquiring["Years Since Last Update of # Employees"] = (
     2025 - acquiring["Number of Employees (year of last update)"]
 )
-
-# %%
-acquiring["IPO"].value_counts()[:5]
-
-# %%
-"""
-None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
-"""
 
 # %%
 acquiring = acquiring[acquiring["IPO"] != "Not yet"]
@@ -147,26 +75,6 @@ acquiring["Number of Employees"] = [
     int(n.replace(",", "")) if type(n) != float else n
     for n in acquiring["Number of Employees"]
 ]
-
-# %%
-"""
-The image of the founder doesn't affect anything at all ... DROPPED
-"""
-
-# %%
-founders = founders.drop("Image", axis=1)
-
-# %%
-"""
-* The specific date which the deal was announced on doesn't matter , what matters is the year so the model can know that inflation affects the price
-* The News and News link don't add any info or details about the acquisition
-"""
-
-# %%
-acquisitions["News"].values[:10]
-
-# %%
-acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
 
 # %%
 df = acquired.copy()
@@ -268,16 +176,6 @@ numeric_cols = df.select_dtypes(include=[float, int]).columns
 categorical_cols = df.select_dtypes(include=[object]).columns
 
 # %%
-"""
-# Checking outliers for actual numeric values
-"""
-
-# %%
-"""
-# Data isn't normally distributed so IQR method will be more efficient
-"""
-
-# %%
 outliers = {}
 
 for col in numeric_cols:
@@ -349,6 +247,11 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
 df.isnull().sum().sum()
 
 # %%
+"""
+# What Should we do with this must_not_be_null values?
+"""
+
+# %%
 must_not_be_null = [
     "Deal size class",
     "Acquiring Company",
@@ -363,8 +266,11 @@ df = knn_impute_numeric(df)
 df.isnull().sum().sum()
 
 # %%
-scaler = MinMaxScaler()
-df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+
+scaler_file = open("./Data/pickle/ClassificatinScalar","rb")
+scaler = pickle.load(scaler_file)
+
+df[numeric_cols] = scaler.transform(df[numeric_cols])
 
 # %%
 """
@@ -408,6 +314,7 @@ def encodeCategory(df, label: str, categories=[]):
     df.loc[nonNullIndex, label] = le.transform(
         [value.lower() for value in df.loc[nonNullIndex, label]]
     )
+
 
 
 # %%
@@ -488,6 +395,11 @@ df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], ax
 encodeCategory(df, "Acquiring Company")
 
 # %%
+"""
+# why don't we encode it before imputing
+"""
+
+# %%
 encodeCategory(df, "Deal size class")
 
 # %%
@@ -514,29 +426,23 @@ num_correlations.sort_values(ascending=False)
 
 # %%
 # Split into training and testing
-X_train, X_test, y_train, y_test = train_test_split(
-    df.drop(
-        [
-            "Deal size class",
-        ],
-        axis=1,
-    ),
-    df["Deal size class"],
-    test_size=0.3,
-    random_state=42,
+X_test = df.drop(
+    [
+        "Deal size class",
+    ],
+    axis=1
 )
+y_test = df["Deal size class"]
 
 # %%
-y_train = y_train.astype(int)
 y_test = y_test.astype(int)
 
 # %%
-reg = RandomForestClassifier(random_state=67)
+model_file = open("./Data/pickle/RandomForestClassifier","rb")
+model = pickle.load(model_file)
 
-reg.fit(X_train, y_train)
-
-y_pred = reg.predict(X_test)
-
+# %%
+y_pred = model.predict(X_test)
 
 # %%
 print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
@@ -548,25 +454,9 @@ print(classification_report(y_test, y_pred))
 cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, annot=True, cmap="Blues")
 
-# %%
-import pickle
-pickle_folder = "./Data/pickle/"
 
 # %%
-scalar_file_name = pickle_folder + "ClassificatinScalar"
-scalar_file = open(scalar_file_name, "wb")
-b = pickle.dump(scaler,scalar_file)
-
-# %%
-model_file_name = pickle_folder + "RandomForestClassifier"
-model_file = open(model_file_name,"wb")
-b = pickle.dump(reg,model_file)
-
-# %%
-# saving data temporarily until pipeline is production ready
-y_test_file = open("./Data/pickle/y_test_data","wb")
-b = pickle.dump(y_test,y_test_file)
-
-# %%
-x_test_file = open("./Data/pickle/x_test_data","wb")
-b = pickle.dump(X_test,x_test_file)
+"""
+## Notes
+- what if he inserted IPO = "not yet" company and didn't want us to drop it ?
+"""
