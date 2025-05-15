@@ -397,7 +397,6 @@ df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
 ### Splitting each multi-valued category to an array of categories
 """
 
-
 # %%
 def mergeDfColumns(df: pd.DataFrame, columns: [str]):
     newCol = []
@@ -694,7 +693,6 @@ df = df.drop(cats, axis=1)
 """
 ### Imputing the null values
 """
-
 
 # %%
 def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:

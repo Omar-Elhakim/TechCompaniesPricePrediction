@@ -17,6 +17,15 @@ from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 
 # %%
+import pickle
+
+def pickle_dump(obj, name : str):
+    file_prefix = "./Data/pickle/cls_"
+    file_name = f"{file_prefix}{name}"
+    f = open(file_name,'wb')
+    b = pickle.dump(obj,f)
+
+# %%
 """
 Reviewing a sample row from each file
 """
@@ -408,6 +417,7 @@ def encodeCategory(df, label: str, categories=[]):
     df.loc[nonNullIndex, label] = le.transform(
         [value.lower() for value in df.loc[nonNullIndex, label]]
     )
+    return categories
 
 
 # %%
@@ -453,6 +463,8 @@ for category in terms:
         lambda x: 1 if ((type(x) != float) and (category in x)) else 0
     )
 
+pickle_dump(terms,"terms")
+
 # %%
 """
 One Hot encoding market categories
@@ -467,6 +479,8 @@ for category in marketCategories:
         lambda x: 1 if ((type(x) != float) and (category in x)) else 0
     )
 
+pickle_dump(terms,"marketCategories")
+
 # %%
 marketCategoriesAcquiring = getUniqueLabels(
     SplitMultiValuedColumn(df["Market Categories (Acquiring)"].dropna())
@@ -475,6 +489,8 @@ for category in marketCategoriesAcquiring:
     df[category + " (Acquiring)"] = df["Market Categories (Acquiring)"].apply(
         lambda x: 1 if ((type(x) != float) and x and (category in x)) else 0
     )
+
+pickle_dump(terms,"marketCategoriesAcquiring")
 
 # %%
 """
@@ -485,10 +501,16 @@ Delete the original columns
 df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
 
 # %%
-encodeCategory(df, "Acquiring Company")
+pickle_dump(
+    encodeCategory(df, "Acquiring Company")
+    ,"AcquiringCompany"
+    )
 
 # %%
-encodeCategory(df, "Deal size class")
+pickle_dump(
+    encodeCategory(df, "Deal size class")
+    ,"DealSizeClass"
+    )
 
 # %%
 s = 0
@@ -549,24 +571,9 @@ cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, annot=True, cmap="Blues")
 
 # %%
-import pickle
-pickle_folder = "./Data/pickle/"
+pickle_dump(scaler,"scaler")
+pickle_dump(reg,"model")
 
-# %%
-scalar_file_name = pickle_folder + "ClassificatinScalar"
-scalar_file = open(scalar_file_name, "wb")
-b = pickle.dump(scaler,scalar_file)
-
-# %%
-model_file_name = pickle_folder + "RandomForestClassifier"
-model_file = open(model_file_name,"wb")
-b = pickle.dump(reg,model_file)
-
-# %%
 # saving data temporarily until pipeline is production ready
-y_test_file = open("./Data/pickle/y_test_data","wb")
-b = pickle.dump(y_test,y_test_file)
-
-# %%
-x_test_file = open("./Data/pickle/x_test_data","wb")
-b = pickle.dump(X_test,x_test_file)
+pickle_dump(y_test,"y_test_data")
+pickle_dump(y_test,"x_test_data")

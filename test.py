@@ -15,7 +15,18 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
+
+# %%
+isClassification = True
+
 import pickle
+
+def pickle_load(name : str):
+    file_prefix = "./Data/pickle/" + ("cls_" if isClassification else "reg_")
+    file_name = f"{file_prefix}{name}"
+    print(f"Loading {file_name}")
+    f = open(file_name,'rb')
+    return pickle.load(f)
 
 # %%
 """
@@ -217,6 +228,11 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
 
 # %%
 """
+### until now it's common operations between classification and regression
+"""
+
+# %%
+"""
 # What Should we do with this must_not_be_null values?
 """
 
@@ -232,8 +248,7 @@ df = df.dropna(subset=must_not_be_null)
 df = knn_impute_numeric(df)
 
 # %%
-scaler_file = open("./Data/pickle/ClassificatinScalar","rb")
-scaler = pickle.load(scaler_file)
+scaler = pickle_load("scaler")
 
 df[numeric_cols] = scaler.transform(df[numeric_cols])
 
@@ -357,6 +372,7 @@ Delete the original columns
 df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
 
 # %%
+AcquiringCompany = pickle_load("AcquiringCompany")
 encodeCategory(df, "Acquiring Company")
 
 # %%
@@ -365,7 +381,9 @@ encodeCategory(df, "Acquiring Company")
 """
 
 # %%
-encodeCategory(df, "Deal size class")
+if isClassification:
+    DealSizeClass = pickle_load("DealSizeClass")
+    encodeCategory(df, "Deal size class")
 
 # %%
 s = 0
@@ -400,8 +418,7 @@ y_test = df["Deal size class"]
 y_test = y_test.astype(int)
 
 # %%
-model_file = open("./Data/pickle/RandomForestClassifier","rb")
-model = pickle.load(model_file)
+model = pickle_load("model")
 
 # %%
 y_pred = model.predict(X_test)
