@@ -1,441 +1,245 @@
-# %%
-"""
-Imports
-"""
+
+# %% [markdown]
+# ## 1. Initial Setup and Imports
+# Import required libraries and set configuration flags
 
 # %%
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-from sklearn import preprocessing
+import pickle
+from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer, SimpleImputer
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 
+# Set classification flag
+isClassification = True
+
+# %% [markdown]
+# ## 2. Helper Functions
+# Define utility functions for loading data and encoding categories
+
 # %%
-isClassification :bool = True
+def pickle_load(name: str):
+    """Load pickled objects from the specified path"""
+    prefix = "./Data/pickle/" + ("cls_" if isClassification else "reg_")
+    path = f"{prefix}{name}"
+    print(f"Loading {path}")
+    with open(path, "rb") as f:
+        return pickle.load(f)
 
-import pickle
+def encodeCategory(df, label, categories):
+    """Encode categorical variables using LabelEncoder"""
+    le = LabelEncoder()
+    le.fit(categories)
+    fallback = le.classes_[0]
+    df[label] = df[label].astype(str).apply(lambda x: x if x in le.classes_ else fallback)
+    df[label] = le.transform(df[label])
+    return le
 
-def pickle_load(name : str):
-    file_prefix = "./Data/pickle/" + ("cls_" if isClassification else "reg_")
-    file_name = f"{file_prefix}{name}"
-    print(f"Loading {file_name}")
-    f = open(file_name,'rb')
-    return pickle.load(f)
+# %% [markdown]
+# ## 3. Data Loading
+# Load the base model data and raw CSV files
 
+# %%
+# Load training base
 model_df = pickle_load("df")
 
-# %%
-"""
-Reviewing a sample row from each file
-"""
-
-# %%
+# Load raw data files
 acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
 acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
 acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
 founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
 
-# %%
-acquiring = acquiring.drop("Image", axis=1)
-acquired = acquired.drop("Image", axis=1)
-
-acquisitions = acquisitions.drop("Acquisition Profile", axis=1)
-acquiring = acquiring.drop(["CrunchBase Profile", "API"], axis=1)
-acquired = acquired.drop(["CrunchBase Profile", "API"], axis=1)
-founders = founders.drop("CrunchBase Profile", axis=1)
-
-acquired = acquired.drop("Address (HQ)", axis=1)
-acquiring = acquiring.drop("Address (HQ)", axis=1)
-
-acquiring = acquiring.drop("Description", axis=1)
-acquired = acquired.drop("Description", axis=1)
-
-acquired = acquired.drop(["Homepage", "Twitter"], axis=1)
-acquiring = acquiring.drop(["Homepage", "Twitter", "Acquisitions ID"], axis=1)
-
-founders = founders.drop("Image", axis=1)
-acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
+# %% [markdown]
+# ## 4. Data Cleaning
+# Perform initial data cleaning and column dropping
 
 # %%
+# Drop unnecessary columns from each dataframe
+for df_, cols in [
+    (acquiring, ["Image", "CrunchBase Profile", "API", "Address (HQ)", "Description", "Homepage", "Twitter", "Acquisitions ID"]),
+    (acquired, ["Image", "CrunchBase Profile", "API", "Address (HQ)", "Description", "Homepage", "Twitter"]),
+    (acquisitions, ["Acquisition Profile", "Deal announced on", "News", "News Link"]),
+    (founders, ["CrunchBase Profile", "Image"])
+]:
+    df_.drop(columns=cols, inplace=True, errors="ignore")
+
+# Fix data errors in acquiring dataframe
+acquiring.loc[acquiring["Number of Employees (year of last update)"] == 2104, "Number of Employees (year of last update)"] = 2014
+acquiring.loc[acquiring["Number of Employees (year of last update)"] == 2103, "Number of Employees (year of last update)"] = 2013
+acquiring["Years Since Last Update of # Employees"] = 2025 - acquiring["Number of Employees (year of last update)"]
 acquiring = acquiring[acquiring["IPO"] != "Not yet"]
+acquiring["Number of Employees"] = acquiring["Number of Employees"].apply(lambda x: int(x.replace(",", "")) if isinstance(x, str) else x)
+
+# %% [markdown]
+# ## 5. Data Merging
+# Merge the different data sources into a single dataframe
 
 # %%
-acquiring["Number of Employees"] = [
-    int(n.replace(",", "")) if type(n) != float else n
-    for n in acquiring["Number of Employees"]
-]
-
-# %%
+# Start with acquired companies as base
 df = acquired.copy()
 
-# %%
-renamed_columns = {}
-for col in acquiring.columns:
-    if col in df.columns:
-        new_col = f"{col} (Acquiring)"
-        renamed_columns[col] = new_col
-
-acquiring = acquiring.rename(columns=renamed_columns)
-
+# Merge acquiring company data
+acquiring = acquiring.rename(columns={col: f"{col} (Acquiring)" for col in acquiring.columns if col in df.columns})
 for col in acquiring.columns:
     if col not in df.columns:
         df[col] = None
+for i, row in df.iterrows():
+    match = acquiring[acquiring["Acquiring Company"] == row["Acquired by"]]
+    if not match.empty:
+        df.loc[i, acquiring.columns] = match.iloc[0]
 
-for i, row1 in df.iterrows():
-    for j, row2 in acquiring.iterrows():
-        if row1["Acquired by"] == row2["Acquiring Company"]:
-            for col in acquiring.columns:
-                df.at[i, col] = row2[col]
-
-# %%
-renamed_columns = {}
-for col in acquisitions.columns:
-    if col in df.columns:
-        new_col = f"{col} (Acquisitions)"
-        renamed_columns[col] = new_col
-
-acquisitions = acquisitions.rename(columns=renamed_columns)
-
+# Merge acquisitions data
+acquisitions = acquisitions.rename(columns={col: f"{col} (Acquisitions)" for col in acquisitions.columns if col in df.columns})
 for col in acquisitions.columns:
     if col not in df.columns:
         df[col] = None
+for i, row in df.iterrows():
+    match = acquisitions[acquisitions["Acquisitions ID (Acquisitions)"] == row["Acquisitions ID"]]
+    if not match.empty:
+        df.loc[i, acquisitions.columns] = match.iloc[0]
 
-for i, row1 in df.iterrows():
-    for j, row2 in acquisitions.iterrows():
-        if row1["Acquisitions ID"] == row2["Acquisitions ID (Acquisitions)"]:
-            for col in acquisitions.columns:
-                df.at[i, col] = row2[col]
+# Clean up merged dataframe
+df.drop(columns=["Acquired by", "Acquisitions ID", "Acquiring Company (Acquisitions)", 
+                "Acquired Company", "Acquisitions ID (Acquisitions)"], inplace=True, errors="ignore")
 
-# %%
-"""
-Delete duplicate columns , and already used columns
-"""
+# Fix year founded errors
+df.loc[df["Year Founded"] == 1840, "Year Founded"] = 2006
+df.loc[df["Year Founded"] == 1933, "Year Founded"] = 1989
 
-# %%
-df = df.drop(
-    [
-        "Acquired by",
-        "Acquisitions ID",
-        "Acquiring Company (Acquisitions)",
-        "Acquired Company",
-        "Acquisitions ID (Acquisitions)",
-    ],
-    axis=1,
-)
-
-# %%
-"""
-Another error found and corrected
-"""
-
-# %%
+# Create derived features
 df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Founded"]
-
-# %%
 df = df[df["Country (HQ)"] != "Israel"]
+df["Country (HQ)"] = df["Country (HQ)"].replace("United Stats of AMerica", "United States")
 
-# %%
-"""
-Processing countries
-"""
+# Handle rare countries
+rare = df["Country (HQ)"].value_counts()[lambda x: x < 3].index
+df["Country (HQ)"] = df["Country (HQ)"].replace(rare, "Other")
 
-# %%
-df["Country (HQ)"].value_counts()
-
-# %%
-df.loc[df["Country (HQ)"] == "United Stats of AMerica", "Country (HQ)"] = (
-    "United States"
-)
-
-# %%
-counts = df["Country (HQ)"].value_counts()
-rare_countries = counts[counts < 3].index
-df["Country (HQ)"] = df["Country (HQ)"].replace(rare_countries, "Other")
-
-# %%
+# Convert data types
 df = df.infer_objects()
 df["IPO"] = df["IPO"].astype(float)
 
-# %%
-numeric_cols = df.select_dtypes(include=[float, int]).columns
-categorical_cols = df.select_dtypes(include=[object]).columns
+# %% [markdown]
+# ## 6. Outlier Handling and Feature Engineering
+# Process numerical features and handle outliers
 
 # %%
-outliers = {}
+# Handle outliers in Age on acquisition
+q1 = df["Age on acquisition"].quantile(0.25)
+q3 = df["Age on acquisition"].quantile(0.75)
+iqr = q3 - q1
+low, high = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+median = df["Age on acquisition"].median()
+df["Age on acquisition"] = df["Age on acquisition"].apply(lambda x: median if x < low or x > high else x)
 
-for col in numeric_cols:
+# Process funding data
+df["Total Funding ($)"] = pd.to_numeric(df["Total Funding ($)"], errors="coerce")
+df["Total Funding ($)"] = df["Total Funding ($)"].fillna(df["Total Funding ($)"].median())
 
-    q1 = df[col].quantile(0.25)
-    q3 = df[col].quantile(0.75)
-    iqr = q3 - q1
-
-    lower_bound = q1 - 1.5 * iqr
-    upper_bound = q3 + 1.5 * iqr
-
-    outlier_mask = (df[col] < lower_bound) | (df[col] > upper_bound)
-    outliers[col] = outlier_mask.sum()
-
-# %%
-median_value = df["Age on acquisition"].median()
-df["Age on acquisition"] = df["Age on acquisition"].apply(
-    lambda x: median_value if x < lower_bound or x > upper_bound else x
-)
-
-# %%
-"""
-- Skewness of Total Funding and Age on acquisition is high so we can use log transformation to avoid data skewing 
-"""
-
-# %%
-df["Total Funding ($)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
-
-# %%
+# Apply log transformations
 df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
 df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
 
-# %%
-"""
-### Imputing the null values
-"""
+# %% [markdown]
+# ## 7. Data Imputation
+# Handle missing values in the dataset
 
 # %%
-def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
+# Identify numeric and categorical columns
+numeric_cols = df.select_dtypes(include=[float, int]).columns.tolist()
+categorical_cols = df.select_dtypes(include=[object]).columns.tolist()
 
-    numeric_df = df[numeric_cols]
-    imputer = KNNImputer(n_neighbors=n_neighbors)
-    imputed_array = imputer.fit_transform(numeric_df)
-    imputed_df = pd.DataFrame(imputed_array, columns=numeric_cols, index=df.index)
-    df[numeric_cols] = imputed_df
+# Drop rows with missing target or key features
+df.dropna(subset=["Deal size class", "Acquiring Company", "Year of acquisition announcement"], inplace=True)
 
-    categorical_df = df[categorical_cols]
+# Impute missing values
+knn = KNNImputer()
+df[numeric_cols] = knn.fit_transform(df[numeric_cols])
+df[categorical_cols] = SimpleImputer(strategy="most_frequent").fit_transform(df[categorical_cols].astype(str))
 
-    categorical_df = categorical_df.astype(str)
-
-    cat_imputer = SimpleImputer(strategy="most_frequent")
-    cat_imputed_array = cat_imputer.fit_transform(categorical_df)
-    cat_imputed_df = pd.DataFrame(
-        cat_imputed_array, columns=categorical_cols, index=df.index
-    )
-    df[categorical_cols] = cat_imputed_df
-
-    return df
-
+# %% [markdown]
+# ## 8. Feature Scaling
+# Scale features using pre-trained scaler
 
 # %%
-"""
-### until now it's common operations between classification and regression
-"""
-
-# %%
-"""
-# What Should we do with this must_not_be_null values?
-"""
-
-# %%
-must_not_be_null = [
-    "Deal size class",
-    "Acquiring Company",
-    "Year of acquisition announcement",
-]
-
-df = df.dropna(subset=must_not_be_null)
-
-df = knn_impute_numeric(df)
-
-# %%
+# Load and apply scaler
 scaler = pickle_load("scaler")
-df[numeric_cols] = scaler.transform(df[numeric_cols])
+for col in scaler.feature_names_in_:
+    if col not in df.columns:
+        print(f"Missing column: {col}. Filling with 0.")
+        df[col] = 0
+df[scaler.feature_names_in_] = scaler.transform(df[scaler.feature_names_in_])
+
+# %% [markdown]
+# ## 9. Feature Encoding
+# Perform one-hot encoding and multi-label encoding
 
 # %%
-"""
-### Splitting each multi-valued category to an array of categories
-"""
-
-# %%
-def SplitMultiValuedColumn(column):
-    c = []
-    for values in column:
-        if type(values) == str:
-            values_ = []
-            for value in values.split(","):
-                if value.strip() != "None":
-                    values_.append(value.strip())
-            c.append(values_)
-        else:
-            c.append(values)
-    return c
-
-
-# %%
-def getUniqueLabels(column):
-    uniqueLabels = []
-    for labels in column:
-        for label in labels:
-            if (label != "None") and (label not in uniqueLabels):
-                uniqueLabels.append(label)
-    return uniqueLabels
-
-
-# %%
-def encodeCategory(df, label: str, categories=[]):
-    nonNullIndex = df[label].notna()
-
-    le = preprocessing.LabelEncoder()
-    if len(categories) == 0:
-        categories = [value.lower() for value in df.loc[nonNullIndex, label]]
-
-    le.fit(categories)
-    df.loc[nonNullIndex, label] = le.transform(
-        [value.lower() for value in df.loc[nonNullIndex, label]]
-    )
-
-
-
-# %%
+# One-hot encode categorical variables
 oneHotEncoded = [
-    "Status",
-    "Country (HQ)",
-    "Country (HQ) (Acquiring)",
-    "City (HQ)",
-    "City (HQ) (Acquiring)",
-    "State / Region (HQ)",
-    "State / Region (HQ) (Acquiring)",
+    "Status", "Country (HQ)", "Country (HQ) (Acquiring)", "City (HQ)",
+    "City (HQ) (Acquiring)", "State / Region (HQ)", "State / Region (HQ) (Acquiring)"
 ]
+df = pd.get_dummies(df, columns=[col for col in oneHotEncoded if col in df.columns], drop_first=True)
+
+# Drop unused columns
+df.drop(columns=["Company", "Tagline", "Tagline (Acquiring)", "Founders", 
+                 "Board Members", "Acquired Companies"], inplace=True, errors="ignore")
+
+# Multi-label encoding for terms and market categories
+for category in pickle_load("terms"):
+    df[category] = df["Terms"].apply(lambda x: 1 if isinstance(x, str) and category in x else 0)
+for category in pickle_load("marketCategories"):
+    df[category] = df["Market Categories"].apply(lambda x: 1 if isinstance(x, str) and category in x else 0)
+for category in pickle_load("marketCategoriesAcquiring"):
+    df[category + " (Acquiring)"] = df["Market Categories (Acquiring)"].apply(lambda x: 1 if isinstance(x, str) and category in x else 0)
+
+# Drop original columns
+df.drop(columns=["Market Categories", "Market Categories (Acquiring)", "Terms"], inplace=True)
+
+# %% [markdown]
+# ## 10. Target Encoding
+# Encode the target variable and other categorical features
 
 # %%
-df = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
+# Encode acquiring company
+encodeCategory(df, "Acquiring Company", pickle_load("AcquiringCompany"))
+
+# Encode target variable
+target_col = "Deal size class"
+label_encoder = encodeCategory(df, target_col, pickle_load("DealSizeClass"))
+
+# %% [markdown]
+# ## 11. Model Preparation
+# Prepare the test data for model prediction
 
 # %%
-"""
-These columns contain lists that can't be given to the model , and one hot encoding them isn't effiecent
-"""
+# Split features and target
+X_test = df.drop(columns=[target_col])
+y_test = df[target_col]
 
-# %%
-lists = [
-    "Tagline",
-    "Tagline (Acquiring)",
-    "Founders",
-    "Board Members",
-    "Acquired Companies",
-]
-
-# %%
-df = df.drop(["Company"] + lists, axis=1)
-
-# %%
-"""
-One hot encoding Terms
-"""
-
-# %%
-# terms = getUniqueLabels(SplitMultiValuedColumn(df["Terms"].dropna()))
-
-terms = pickle_load("terms")
-for category in terms:
-    df[category] = df["Terms"].apply(
-        lambda x: 1 if ((type(x) != float) and (category in x)) else 0
-    )
-
-# %%
-"""
-One Hot encoding market categories
-"""
-
-# %%
-# marketCategories = getUniqueLabels(
-#     SplitMultiValuedColumn(df["Market Categories"].dropna())
-# )
-marketCategories = pickle_load("marketCategories")
-for category in marketCategories:
-    df[category] = df["Market Categories"].apply(
-        lambda x: 1 if ((type(x) != float) and (category in x)) else 0
-    )
-
-# %%
-# marketCategoriesAcquiring = getUniqueLabels(
-#     SplitMultiValuedColumn(df["Market Categories (Acquiring)"].dropna())
-# )
-
-marketCategoriesAcquiring = pickle_load("marketCategoriesAcquiring")
-for category in marketCategoriesAcquiring:
-    df[category + " (Acquiring)"] = df["Market Categories (Acquiring)"].apply(
-        lambda x: 1 if ((type(x) != float) and x and (category in x)) else 0
-    )
-
-# %%
-"""
-Delete the original columns
-"""
-
-# %%
-df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
-
-# %%
-AcquiringCompany = pickle_load("AcquiringCompany")
-encodeCategory(df, "Acquiring Company", AcquiringCompany)
-
-# %%
-"""
-# why don't we encode it before imputing
-"""
-
-# %%
-if isClassification:
-    DealSizeClass = pickle_load("DealSizeClass")
-    encodeCategory(df, "Deal size class")
-else:
-    Price = pickle_load("Price")
-    encodeCategory(df, "Price")
-
-# %%
-s = 0
-cats = []
-for c in df.columns:
-    try:
-        if df[c].sum() == 1:
-            cats.append(c)
-            s += 1
-    except:
-        pass
-
-# %%
-df = df.drop(cats, axis=1)
-
-# %%
-num_correlations = df[numeric_cols].apply(
-    lambda x: abs(x.corr(df["Deal size class"], method="kendall"))
-)
-num_correlations.sort_values(ascending=False)
-
-# %%
-X_test = df.drop(
-    [ "Deal size class",] if isClassification else ["Price",],
-    axis=1
-)
-
-y_test = df["Deal size class"] if isClassification else df["Price"]
-
-# %%
-y_test = y_test.astype(int)
-
-# %%
+# Load trained model
 model = pickle_load("model")
 
+# Ensure all required features are present
+for col in model.feature_names_in_:
+    if col not in X_test.columns:
+        print(f"Missing column for model: {col}. Filling with 0.")
+        X_test[col] = 0
+X_test = X_test[model.feature_names_in_]
+
+# %% [markdown]
+# ## 12. Model Evaluation
+# Make predictions and evaluate model performance
+
 # %%
+# Make predictions
 y_pred = model.predict(X_test)
 
-# %%
-cm = confusion_matrix(y_test, y_pred)
-sns.heatmap(cm, annot=True, cmap="Blues")
+# Print classification report
+print(classification_report(y_test, y_pred))
 
-# %%
-"""
-## Notes
-- what if he inserted IPO = "not yet" company and didn't want us to drop it ?
-"""
+# Plot confusion matrix
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, cmap="Blues")
