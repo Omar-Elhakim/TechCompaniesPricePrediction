@@ -51,23 +51,6 @@ founders = founders.drop("Image", axis=1)
 acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
 
 # %%
-acquisitions.loc[
-    acquisitions["Year of acquisition announcement"] == 2104,
-    "Year of acquisition announcement",
-] = 2014
-acquiring.loc[
-    acquiring["Number of Employees (year of last update)"] == 2104,
-    "Number of Employees (year of last update)",
-] = 2014
-acquiring.loc[
-    acquiring["Number of Employees (year of last update)"] == 2103,
-    "Number of Employees (year of last update)",
-] = 2013
-acquiring["Years Since Last Update of # Employees"] = (
-    2025 - acquiring["Number of Employees (year of last update)"]
-)
-
-# %%
 acquiring = acquiring[acquiring["IPO"] != "Not yet"]
 
 # %%
@@ -140,10 +123,6 @@ Another error found and corrected
 """
 
 # %%
-df.loc[df["Year Founded"] == 1840, "Year Founded"] = 2006
-df.loc[df["Year Founded"] == 1933, "Year Founded"] = 1989
-
-# %%
 df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Founded"]
 
 # %%
@@ -190,18 +169,11 @@ for col in numeric_cols:
     outlier_mask = (df[col] < lower_bound) | (df[col] > upper_bound)
     outliers[col] = outlier_mask.sum()
 
-
-print(pd.Series(outliers).sort_values(ascending=False))
-
 # %%
 median_value = df["Age on acquisition"].median()
 df["Age on acquisition"] = df["Age on acquisition"].apply(
     lambda x: median_value if x < lower_bound or x > upper_bound else x
 )
-
-# %%
-for col in numeric_cols:
-    print(f"{col} skew: {df[col].skew():.2f}")
 
 # %%
 """
@@ -244,9 +216,6 @@ def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
 
 
 # %%
-df.isnull().sum().sum()
-
-# %%
 """
 # What Should we do with this must_not_be_null values?
 """
@@ -263,10 +232,6 @@ df = df.dropna(subset=must_not_be_null)
 df = knn_impute_numeric(df)
 
 # %%
-df.isnull().sum().sum()
-
-# %%
-
 scaler_file = open("./Data/pickle/ClassificatinScalar","rb")
 scaler = pickle.load(scaler_file)
 
@@ -408,12 +373,10 @@ cats = []
 for c in df.columns:
     try:
         if df[c].sum() == 1:
-            print(c)
             cats.append(c)
             s += 1
     except:
         pass
-print(s)
 
 # %%
 df = df.drop(cats, axis=1)
@@ -425,7 +388,6 @@ num_correlations = df[numeric_cols].apply(
 num_correlations.sort_values(ascending=False)
 
 # %%
-# Split into training and testing
 X_test = df.drop(
     [
         "Deal size class",
@@ -445,15 +407,8 @@ model = pickle.load(model_file)
 y_pred = model.predict(X_test)
 
 # %%
-print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
-
-# %%
-print(classification_report(y_test, y_pred))
-
-# %%
 cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, annot=True, cmap="Blues")
-
 
 # %%
 """
