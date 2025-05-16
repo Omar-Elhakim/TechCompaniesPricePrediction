@@ -37,28 +37,30 @@ This is the only new column , that's what we will predict
 acquisitions.loc[0]["Deal size class"]
 
 # %%
-acquiring = acquiring.drop("Image", axis=1)
-acquired = acquired.drop("Image", axis=1)
-
-# %%
 """
 * Remove all crunchbase links
+* We don't need the exact address of the company, we already have the city , state and country
+* 'Tagline' contains a brief and precise description of the company , while the 'Description' is very long and doesn't provide any more important details, 
+so we will drop the 'Description'
+
+* The image of the founder doesn't affect anything at all ... DROPPED
+* There isn't any new useful information that we can get out of those , so we will drop them
+* "Homepage" column contains the link to the website of every company , and they aren't all the same so we can't apply a function or a program to extract certain information about them. To use the link , this would require us to go over into each of them one by one , which isn't  feasible
+
+
+* "Twitter" column also can't be scraped according to their new policy , tried multiple APIs and libraries but none of them worked , even twitter's free tier API is useless
+
+* "Acquisition ID" is just used to link between files , and we can do that with the company's name
+* The specific date which the deal was announced on doesn't matter , what matters is the year so the model can know that inflation affects the price
+* The News and News link don't add any info or details about the acquisition
+* Dropping multivalues columns because one hot encoding them is inefficient , and label encoding it isn't possible
 """
 
 # %%
-acquisitions = acquisitions.drop("Acquisition Profile", axis=1)
-acquiring = acquiring.drop(["CrunchBase Profile", "API"], axis=1)
-acquired = acquired.drop(["CrunchBase Profile", "API"], axis=1)
-founders = founders.drop("CrunchBase Profile", axis=1)
-
-# %%
-"""
-We don't need the exact address of the company, we already have the city , state and country
-"""
-
-# %%
-acquired = acquired.drop("Address (HQ)", axis=1)
-acquiring = acquiring.drop("Address (HQ)", axis=1)
+acquired = acquired.drop(["CrunchBase Profile", "API","Address (HQ)","Description","Image","Homepage", "Twitter"], axis=1)
+acquiring = acquiring.drop(["Image","CrunchBase Profile", "API","Address (HQ)","Description","Homepage", "Twitter", "Acquisitions ID"], axis=1)
+acquisitions = acquisitions.drop(["Acquisition Profile","Deal announced on", "News", "News Link"], axis=1)
+founders = founders.drop(["CrunchBase Profile","Image"], axis=1)
 
 # %%
 """
@@ -70,38 +72,6 @@ acquisitions.loc[
     acquisitions["Year of acquisition announcement"] == 2104,
     "Year of acquisition announcement",
 ] = 2014
-
-# %%
-"""
-* 'Tagline' contains a brief and precise description of the company , while the 'Description' is very long and doesn't provide any more important details, 
-so we will drop the 'Description'
-"""
-
-# %%
-acquiring = acquiring.drop("Description", axis=1)
-acquired = acquired.drop("Description", axis=1)
-
-# %%
-"""
-### There isn't any new useful information that we can get out of those , so we will drop them
-"""
-
-# %%
-"""
-* "Homepage" column contains the link to the website of every company , and they aren't all the same so we can't apply a function or a program to extract certain information about them. To use the link , this would require us to go over into each of them one by one , which isn't  feasible
-
-
-* "Twitter" column also can't be scraped according to their new policy , tried multiple APIs and libraries but none of them worked , even twitter's free tier API is useless
- 
-
-* "Acquisition ID" is just used to link between files , and we can do that with the company's name
-"""
-
-# %%
-acquired = acquired.drop(["Homepage", "Twitter"], axis=1)
-acquiring = acquiring.drop(["Homepage", "Twitter", "Acquisitions ID"], axis=1)
-
-# %%
 acquiring.loc[
     acquiring["Number of Employees (year of last update)"] == 2104,
     "Number of Employees (year of last update)",
@@ -110,6 +80,13 @@ acquiring.loc[
     acquiring["Number of Employees (year of last update)"] == 2103,
     "Number of Employees (year of last update)",
 ] = 2013
+acquired.loc[acquired["Year Founded"] == 1840, "Year Founded"] = 2006
+acquired.loc[acquired["Year Founded"] == 1933, "Year Founded"] = 1989
+
+# %%
+"""
+Create a new column
+"""
 
 # %%
 acquiring["Years Since Last Update of # Employees"] = (
@@ -118,34 +95,17 @@ acquiring["Years Since Last Update of # Employees"] = (
 
 # %%
 """
-None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
+Replace 'Not yet' with 2025 because its the closest value
 """
 
 # %%
-acquiring = acquiring[acquiring["IPO"] != "Not yet"]
+acquiring.loc[acquiring["IPO"] == "Not yet","IPO"]=2025
 
 # %%
 acquiring["Number of Employees"] = [
     int(n.replace(",", "")) if type(n) != float else n
     for n in acquiring["Number of Employees"]
 ]
-
-# %%
-founders = founders.drop("Image", axis=1)
-
-# %%
-"""
-The image of the founder doesn't affect anything at all ... DROPPED
-"""
-
-# %%
-"""
-* The specific date which the deal was announced on doesn't matter , what matters is the year so the model can know that inflation affects the price
-* The News and News link don't add any info or details about the acquisition
-"""
-
-# %%
-acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
 
 # %%
 df = acquired.copy()
@@ -206,15 +166,6 @@ df = df.drop(
 )
 
 # %%
-"""
-Another error found and corrected
-"""
-
-# %%
-df.loc[df["Year Founded"] == 1840, "Year Founded"] = 2006
-df.loc[df["Year Founded"] == 1933, "Year Founded"] = 1989
-
-# %%
 df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Founded"]
 
 # %%
@@ -240,17 +191,17 @@ df = df.infer_objects()
 df["IPO"] = df["IPO"].astype(float)
 
 # %%
+"""
+separating numeric columns from categorical columns
+"""
+
+# %%
 numeric_cols = df.select_dtypes(include=[float, int]).columns
 categorical_cols = df.select_dtypes(include=[object]).columns
 
 # %%
 """
-# Checking outliers for actual numeric values
-"""
-
-# %%
-"""
-# Data isn't normally distributed so IQR method will be more efficient
+Data isn't normally distributed so IQR method will be more efficient
 """
 
 # %%
@@ -285,7 +236,9 @@ df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
 
 # %%
 """
-### Imputing the null values
+Accuracy when:
+* imputing null values: 35%
+* dropping null values: 62%
 """
 
 # %%
@@ -351,11 +304,6 @@ oneHotEncoded = [
 df = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
 
 # %%
-"""
-These columns contain lists that can't be given to the model , and one hot encoding them isn't effiecent
-"""
-
-# %%
 lists = [
     "Tagline",
     "Tagline (Acquiring)",
@@ -364,7 +312,6 @@ lists = [
     "Acquired Companies",
 ]
 
-# %%
 df = df.drop(["Company"] + lists, axis=1)
 
 # %%
@@ -411,10 +358,10 @@ Delete the original columns
 df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
 
 # %%
-encodeCategory(df, "Acquiring Company")
-encodeCategory(df, "State / Region (HQ)")
-encodeCategory(df, "Deal size class")
-encodeCategory(df, "City (HQ)")
+LabelEncoded = ["City (HQ)","Acquiring Company","State / Region (HQ)", "Deal size class"]
+for col in LabelEncoded:
+    encodeCategory(df,col ) 
+    df[col] = df[col].astype("category")
 
 # %%
 """
