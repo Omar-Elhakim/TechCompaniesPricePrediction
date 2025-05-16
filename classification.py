@@ -8,11 +8,22 @@ import warnings
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.preprocessing import MinMaxScaler,LabelEncoder
-from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score,classification_report
-from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold,RandomizedSearchCV,StratifiedKFold
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    accuracy_score,
+    classification_report,
+)
+from sklearn.model_selection import (
+    train_test_split,
+    GridSearchCV,
+    StratifiedKFold,
+    RandomizedSearchCV,
+    StratifiedKFold,
+)
 from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
@@ -53,14 +64,39 @@ so we will drop the 'Description'
 * "Acquisition ID" is just used to link between files , and we can do that with the company's name
 * The specific date which the deal was announced on doesn't matter , what matters is the year so the model can know that inflation affects the price
 * The News and News link don't add any info or details about the acquisition
-* Dropping multivalues columns because one hot encoding them is inefficient , and label encoding it isn't possible
+* Dropping multivalued columns because one hot encoding them is inefficient , and label encoding it isn't possible
 """
 
 # %%
-acquired = acquired.drop(["CrunchBase Profile", "API","Address (HQ)","Description","Image","Homepage", "Twitter"], axis=1)
-acquiring = acquiring.drop(["Image","CrunchBase Profile", "API","Address (HQ)","Description","Homepage", "Twitter", "Acquisitions ID"], axis=1)
-acquisitions = acquisitions.drop(["Acquisition Profile","Deal announced on", "News", "News Link"], axis=1)
-founders = founders.drop(["CrunchBase Profile","Image"], axis=1)
+acquired = acquired.drop(
+    [
+        "CrunchBase Profile",
+        "API",
+        "Address (HQ)",
+        "Description",
+        "Image",
+        "Homepage",
+        "Twitter",
+    ],
+    axis=1,
+)
+acquiring = acquiring.drop(
+    [
+        "Image",
+        "CrunchBase Profile",
+        "API",
+        "Address (HQ)",
+        "Description",
+        "Homepage",
+        "Twitter",
+        "Acquisitions ID",
+    ],
+    axis=1,
+)
+acquisitions = acquisitions.drop(
+    ["Acquisition Profile", "Deal announced on", "News", "News Link"], axis=1
+)
+founders = founders.drop(["CrunchBase Profile", "Image"], axis=1)
 
 # %%
 """
@@ -99,7 +135,7 @@ Replace 'Not yet' with 2025 because its the closest value
 """
 
 # %%
-acquiring.loc[acquiring["IPO"] == "Not yet","IPO"]=2025
+acquiring.loc[acquiring["IPO"] == "Not yet", "IPO"] = 2025
 
 # %%
 acquiring["Number of Employees"] = [
@@ -253,6 +289,7 @@ df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 ### Splitting each multi-valued category to an array of categories
 """
 
+
 # %%
 def SplitMultiValuedColumn(column):
     c = []
@@ -266,6 +303,7 @@ def SplitMultiValuedColumn(column):
         else:
             c.append(values)
     return c
+
 
 # %%
 def getUniqueLabels(column):
@@ -290,6 +328,7 @@ def encodeCategory(df, label: str, categories=[]):
     df.loc[nonNullIndex, label] = le.transform(
         [value.lower() for value in df.loc[nonNullIndex, label]]
     )
+
 
 # %%
 oneHotEncoded = [
@@ -358,9 +397,14 @@ Delete the original columns
 df = df.drop(["Market Categories", "Market Categories (Acquiring)", "Terms"], axis=1)
 
 # %%
-LabelEncoded = ["City (HQ)","Acquiring Company","State / Region (HQ)", "Deal size class"]
+LabelEncoded = [
+    "City (HQ)",
+    "Acquiring Company",
+    "State / Region (HQ)",
+    "Deal size class",
+]
 for col in LabelEncoded:
-    encodeCategory(df,col ) 
+    encodeCategory(df, col)
     df[col] = df[col].astype("category")
 
 # %%
@@ -392,7 +436,7 @@ num_correlations.sort_values(ascending=False)
 X_train, X_test, y_train, y_test = train_test_split(
     df.drop(
         [
-            "Deal size class",  
+            "Deal size class",
         ],
         axis=1,
     ),
