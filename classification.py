@@ -27,10 +27,10 @@ Reviewing a sample row from each file
 """
 
 # %%
-acquired = pd.read_csv("Data\ClassificationData\Acquired Tech Companies.csv")
+acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
 
 # %%
-acquiring = pd.read_csv("Data\ClassificationData\Acquiring Tech Companies.csv")
+acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
 
 # %%
 acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
@@ -43,8 +43,7 @@ This is the only new column , that's what we will predict
 # %%
 acquisitions.loc[0]["Deal size class"]
 
-acquisitions = pd.read_csv("Data\ClassificationData\Acquisitions.csv")
-acquisitions.iloc[0]["Deal size class"]
+founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
 
 # %%
 acquiring = acquiring.drop("Image", axis=1)
@@ -178,7 +177,6 @@ The image of the founder doesn't affect anything at all ... DROPPED
 """
 
 # %%
-founders = founders.drop("Image", axis=1)
 
 # %%
 """
@@ -445,8 +443,6 @@ oneHotEncoded = [
 ]
 
 # %%
-
-df = df.drop(oneHotEncoded, axis=1)
 
 df = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
 
