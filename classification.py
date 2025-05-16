@@ -28,12 +28,9 @@ Reviewing a sample row from each file
 
 # %%
 acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
-
-# %%
 acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
-
-# %%
 acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
+founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
 
 # %%
 """
@@ -42,8 +39,6 @@ This is the only new column , that's what we will predict
 
 # %%
 acquisitions.loc[0]["Deal size class"]
-
-founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
 
 # %%
 acquiring = acquiring.drop("Image", axis=1)
@@ -79,13 +74,6 @@ acquisitions.loc[
     acquisitions["Year of acquisition announcement"] == 2104,
     "Year of acquisition announcement",
 ] = 2014
-
-# %%
-acquired.iloc[12]["Tagline"]
-
-# %%
-for l in acquired.iloc[12]["Description"].split("."):
-    print(l + "\n")
 
 # %%
 """
@@ -133,9 +121,6 @@ acquiring["Years Since Last Update of # Employees"] = (
 )
 
 # %%
-acquiring["IPO"].value_counts()[:5]
-
-# %%
 """
 None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
 """
@@ -162,9 +147,6 @@ The image of the founder doesn't affect anything at all ... DROPPED
 * The specific date which the deal was announced on doesn't matter , what matters is the year so the model can know that inflation affects the price
 * The News and News link don't add any info or details about the acquisition
 """
-
-# %%
-acquisitions["News"].values[:10]
 
 # %%
 acquisitions = acquisitions.drop(["Deal announced on", "News", "News Link"], axis=1)
@@ -211,9 +193,6 @@ for i, row1 in df.iterrows():
                 df.at[i, col] = row2[col]
 
 # %%
-df.info()
-
-# %%
 """
 Delete duplicate columns , and already used columns
 """
@@ -246,18 +225,9 @@ df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Fou
 df = df[df["Country (HQ)"] != "Israel"]
 
 # %%
-df.head()
-
-# %%
-df.info()
-
-# %%
 """
 Processing countries
 """
-
-# %%
-df["Country (HQ)"].value_counts()
 
 # %%
 df.loc[df["Country (HQ)"] == "United Stats of AMerica", "Country (HQ)"] = (
@@ -302,9 +272,6 @@ for col in numeric_cols:
     outlier_mask = (df[col] < lower_bound) | (df[col] > upper_bound)
     outliers[col] = outlier_mask.sum()
 
-
-print(pd.Series(outliers).sort_values(ascending=False))
-
 # %%
 median_value = df["Age on acquisition"].median()
 df["Age on acquisition"] = df["Age on acquisition"].apply(
@@ -312,16 +279,9 @@ df["Age on acquisition"] = df["Age on acquisition"].apply(
 )
 
 # %%
-for col in numeric_cols:
-    print(f"{col} skew: {df[col].skew():.2f}")
-
-# %%
 """
 - Skewness of Total Funding and Age on acquisition is high so we can use log transformation to avoid data skewing 
 """
-
-# %%
-df["Total Funding ($)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
 
 # %%
 df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
@@ -336,18 +296,8 @@ df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
 df = df.dropna()
 
 # %%
-df["Deal size class"].value_counts()
-
-
-# %%
 scaler = MinMaxScaler()
 df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
-
-# %%
-df.head()
-
-# %%
-df['Years Since Last Update of # Employees'].value_counts()
 
 # %%
 """
@@ -434,12 +384,6 @@ for category in terms:
     )
 
 # %%
-df["Market Categories"].value_counts()
-
-# %%
-df.head()
-
-# %%
 """
 One Hot encoding market categories
 """
@@ -477,13 +421,6 @@ encodeCategory(df, "Deal size class")
 encodeCategory(df, "City (HQ)")
 
 # %%
-df.head()
-
-# %%
-num_rows = df.shape[0]
-print(f"Number of rows: {num_rows}")
-
-# %%
 """
 # Dropping columns with only sum = 1 to minimize the number of features
 """
@@ -494,12 +431,10 @@ cats = []
 for c in df.columns:
     try:
         if df[c].sum() == 1:
-            print(c)
             cats.append(c)
             s += 1
     except:
         pass
-print(s)
 
 # %%
 df = df.drop(cats, axis=1)
@@ -509,12 +444,6 @@ num_correlations = df[numeric_cols].apply(
     lambda x: abs(x.corr(df["Deal size class"], method="kendall"))
 )
 num_correlations.sort_values(ascending=False)
-
-# %%
-df["Deal size class"].value_counts()
-
-# %%
-df.head()
 
 # %%
 X_train, X_test, y_train, y_test = train_test_split(
@@ -566,8 +495,6 @@ print(f"AdaBoost Test Accuracy: {accuracy_score(y_test, y_pred_ada) * 100:.2f}%"
 print(classification_report(y_test, y_pred_ada))
 
 # %%
-print(f"{(((y_pred_ada==y_test).sum()/len(y_test))*100):.2f}")
-print(classification_report(y_test, y_pred_ada))
 cm = confusion_matrix(y_test, y_pred_ada)
 sns.heatmap(cm, annot=True, cmap="Blues")
 
@@ -606,6 +533,10 @@ print(f"Random Forest Test Accuracy: {accuracy_score(y_test, y_pred_rf) * 100:.2
 print(classification_report(y_test, y_pred_rf))
 
 # %%
+cm = confusion_matrix(y_test, y_pred_rf)
+sns.heatmap(cm, annot=True, cmap="Blues")
+
+# %%
 X_train = pd.get_dummies(X_train)
 X_test = pd.get_dummies(X_test)
 
@@ -628,7 +559,5 @@ print("Classification Report:\n", classification_report(y_test, y_pred))
 
 
 # %%
-print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
-print(classification_report(y_test, y_pred))
 cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, annot=True, cmap="Blues")
