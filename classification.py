@@ -7,17 +7,13 @@
 import warnings
 import numpy as np
 import pandas as pd
-from sklearn import preprocessing
-import plotly.graph_objects as go
-from datetime import datetime as d
-from sklearn.impute import KNNImputer, SimpleImputer
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler,LabelEncoder
+from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score,classification_report
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold,RandomizedSearchCV,StratifiedKFold
+from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
 
@@ -333,7 +329,7 @@ def getUniqueLabels(column):
 def encodeCategory(df, label: str, categories=[]):
     nonNullIndex = df[label].notna()
 
-    le = preprocessing.LabelEncoder()
+    le = LabelEncoder()
     if len(categories) == 0:
         categories = [value.lower() for value in df.loc[nonNullIndex, label]]
 
@@ -464,12 +460,6 @@ y_train = y_train.astype(int)
 y_test = y_test.astype(int)
 
 # %%
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import classification_report, accuracy_score
-from sklearn.model_selection import StratifiedKFold
-
 ada_param_grid = {
     "n_estimators": [50, 100, 150],
     "learning_rate": [0.01, 0.1, 1],
@@ -499,13 +489,6 @@ cm = confusion_matrix(y_test, y_pred_ada)
 sns.heatmap(cm, annot=True, cmap="Blues")
 
 # %%
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import classification_report, accuracy_score
-from sklearn.model_selection import StratifiedKFold
-
-# Random Forest Best Parameters:  {'n_estimators': 150, 'min_samples_split': 2, 'min_samples_leaf': 4, 'max_features': 'sqrt', 'max_depth': 10}
-
 rf_param_grid = {
     "n_estimators": [50, 100, 150],
     "max_depth": [10, 20, None],
@@ -544,9 +527,6 @@ X_test = pd.get_dummies(X_test)
 X_train, X_test = X_train.align(X_test, join="left", axis=1, fill_value=0)
 
 # %%
-from xgboost import XGBClassifier
-from sklearn.metrics import classification_report, accuracy_score
-
 model = XGBClassifier(
     use_label_encoder=False, eval_metric="mlogloss", enable_categorical=True
 )
