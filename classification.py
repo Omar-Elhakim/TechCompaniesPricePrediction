@@ -249,7 +249,6 @@ df.info()
 Delete duplicate columns , and already used columns
 """
 
-
 # %%
 df = df.drop(
     [
@@ -292,7 +291,6 @@ df.info()
 """
 Processing countries
 """
-
 
 # %%
 df["Country (HQ)"].value_counts()
@@ -441,10 +439,6 @@ def encodeCategory(df, label: str, categories=[]):
     )
     return categories
 
-
-
-
-
 # %%
 oneHotEncoded = [
     "Status",
@@ -455,14 +449,12 @@ oneHotEncoded = [
 ]
 
 # %%
-
 df = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
 
 # %%
 """
 These columns contain lists that can't be given to the model , and one hot encoding them isn't effiecent
 """
-
 
 # %%
 lists = [
@@ -477,8 +469,6 @@ lists = [
 df = df.drop(["Company"] + lists, axis=1)
 
 # %%
-
-
 """
 One hot encoding Terms
 """
@@ -505,7 +495,6 @@ df.head()
 One Hot encoding market categories
 """
 
-
 # %%
 marketCategories = getUniqueLabels(
     SplitMultiValuedColumn(df["Market Categories"].dropna())
@@ -515,7 +504,7 @@ for category in marketCategories:
         lambda x: 1 if ((type(x) != float) and (category in x)) else 0
     )
 
-pickle_dump(terms,"marketCategories")
+pickle_dump(marketCategories,"marketCategories")
 
 # %%
 marketCategoriesAcquiring = getUniqueLabels(
@@ -526,7 +515,7 @@ for category in marketCategoriesAcquiring:
         lambda x: 1 if ((type(x) != float) and x and (category in x)) else 0
     )
 
-pickle_dump(terms,"marketCategoriesAcquiring")
+pickle_dump(marketCategoriesAcquiring,"marketCategoriesAcquiring")
 
 # %%
 
@@ -643,6 +632,7 @@ y_pred_ada = ada_best.predict(X_test)
 
 print(f"AdaBoost Test Accuracy: {accuracy_score(y_test, y_pred_ada) * 100:.2f}%")
 print(classification_report(y_test, y_pred_ada))
+pickle_dump(ada_best,"model1")
 
 # %%
 print(f"{(((y_pred_ada==y_test).sum()/len(y_test))*100):.2f}")
@@ -684,37 +674,39 @@ y_pred_rf = rf_best.predict(X_test)
 print(f"Random Forest Test Accuracy: {accuracy_score(y_test, y_pred_rf) * 100:.2f}%")
 print(classification_report(y_test, y_pred_rf))
 
-# %%
-X_train = pd.get_dummies(X_train)
-X_test = pd.get_dummies(X_test)
+pickle_dump(rf_best,"model2")
+
+# # %%
+# X_train = pd.get_dummies(X_train)
+# X_test = pd.get_dummies(X_test)
 
 
-X_train, X_test = X_train.align(X_test, join="left", axis=1, fill_value=0)
-
-# %%
-from xgboost import XGBClassifier
-from sklearn.metrics import classification_report, accuracy_score
-
-model = XGBClassifier(
-    use_label_encoder=False, eval_metric="mlogloss", enable_categorical=True
-)
-model.fit(X_train, y_train)
-
-y_pred = model.predict(X_test)
-
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print("Classification Report:\n", classification_report(y_test, y_pred))
-
+# X_train, X_test = X_train.align(X_test, join="left", axis=1, fill_value=0)
 
 # %%
-print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
-print(classification_report(y_test, y_pred))
-cm = confusion_matrix(y_test, y_pred)
-sns.heatmap(cm, annot=True, cmap="Blues")
+# from xgboost import XGBClassifier
+# from sklearn.metrics import classification_report, accuracy_score
+#
+# model = XGBClassifier(
+#     use_label_encoder=False, eval_metric="mlogloss", enable_categorical=True
+# )
+# model.fit(X_train, y_train)
+#
+# y_pred = model.predict(X_test)
+
+# print("Accuracy:", accuracy_score(y_test, y_pred))
+# print("Classification Report:\n", classification_report(y_test, y_pred))
+
+
+# %%
+# print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
+# print(classification_report(y_test, y_pred))
+# cm = confusion_matrix(y_test, y_pred)
+# sns.heatmap(cm, annot=True, cmap="Blues")
+# pickle_dump(model,"model3")
 
 # %%
 pickle_dump(scaler,"scaler")
-pickle_dump(reg,"model")
 
 # saving data temporarily until pipeline is production ready
 pickle_dump(y_test,"y_test_data")

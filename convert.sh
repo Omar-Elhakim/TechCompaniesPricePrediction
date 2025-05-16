@@ -13,7 +13,7 @@ case "$1" in
     ipynb-py-convert "./test.ipynb" "./test.py"
     ;;
   "rm")
-    rm ./*.ipynb
+    rm ./*.ipynb;;
   "*")
     echo "Invalid Command"
 esac
