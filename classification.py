@@ -1,6 +1,5 @@
 # %%
 """
-<<<<<<< HEAD
 # Imports
 """
 
@@ -8,9 +7,6 @@
 import warnings
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import plotly.express as px
-import matplotlib.pyplot as plt
 from sklearn import preprocessing
 import plotly.graph_objects as go
 from datetime import datetime as d
@@ -18,12 +14,12 @@ from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, classification_report
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 # %%
 """
@@ -31,10 +27,13 @@ Reviewing a sample row from each file
 """
 
 # %%
-acquired = pd.read_csv("Data\ClassificationData\Acquired Tech Companies.csv")
+acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
 
 # %%
-acquiring = pd.read_csv("Data\ClassificationData\Acquiring Tech Companies.csv")
+acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
+
+# %%
+acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
 
 # %%
 """
@@ -42,51 +41,41 @@ This is the only new column , that's what we will predict
 """
 
 # %%
-
-acquisitions = pd.read_csv("Data\ClassificationData\Acquisitions.csv")
-acquisitions.iloc[0]["Deal size class"]
+acquisitions.loc[0]["Deal size class"]
 
 # %%
-founders = pd.read_csv("Data\ClassificationData\Founders and Board Members.csv")
+founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
 
 # %%
 acquiring = acquiring.drop("Image", axis=1)
 acquired = acquired.drop("Image", axis=1)
 
 # %%
-
-
 """
 * Remove all crunchbase links
 """
 
 # %%
-
 acquisitions = acquisitions.drop("Acquisition Profile", axis=1)
 acquiring = acquiring.drop(["CrunchBase Profile", "API"], axis=1)
 acquired = acquired.drop(["CrunchBase Profile", "API"], axis=1)
 founders = founders.drop("CrunchBase Profile", axis=1)
 
 # %%
-
-
 """
 We don't need the exact address of the company, we already have the city , state and country
 """
 
 # %%
-
 acquired = acquired.drop("Address (HQ)", axis=1)
 acquiring = acquiring.drop("Address (HQ)", axis=1)
 
 # %%
-
 """
 There was a wrongly entered value, so I looked at the link and corrected it
 """
 
 # %%
-
 acquisitions.loc[
     acquisitions["Year of acquisition announcement"] == 2104,
     "Year of acquisition announcement",
@@ -100,21 +89,16 @@ for l in acquired.iloc[12]["Description"].split("."):
     print(l + "\n")
 
 # %%
-
-
 """
 * 'Tagline' contains a brief and precise description of the company , while the 'Description' is very long and doesn't provide any more important details, 
 so we will drop the 'Description'
 """
 
 # %%
-
 acquiring = acquiring.drop("Description", axis=1)
 acquired = acquired.drop("Description", axis=1)
 
 # %%
-
-
 """
 ### There isn't any new useful information that we can get out of those , so we will drop them
 """
@@ -131,7 +115,6 @@ acquired = acquired.drop("Description", axis=1)
 """
 
 # %%
-
 acquired = acquired.drop(["Homepage", "Twitter"], axis=1)
 acquiring = acquiring.drop(["Homepage", "Twitter", "Acquisitions ID"], axis=1)
 
@@ -154,14 +137,11 @@ acquiring["Years Since Last Update of # Employees"] = (
 acquiring["IPO"].value_counts()[:5]
 
 # %%
-
-
 """
 None of the acquired companies of both companies with IPO=='Not yet' are in our daatset , so we will drop them with no harm
 """
 
 # %%
-
 acquiring = acquiring[acquiring["IPO"] != "Not yet"]
 
 # %%
@@ -171,11 +151,6 @@ acquiring["Number of Employees"] = [
 ]
 
 # %%
-
-founders = founders.drop("Image", axis=1)
-
-# %%
-
 """
 The image of the founder doesn't affect anything at all ... DROPPED
 """
@@ -190,7 +165,6 @@ founders = founders.drop("Image", axis=1)
 """
 
 # %%
-
 acquisitions["News"].values[:10]
 
 # %%
@@ -238,13 +212,12 @@ for i, row1 in df.iterrows():
                 df.at[i, col] = row2[col]
 
 # %%
-
 df.info()
 
+# %%
 """
 Delete duplicate columns , and already used columns
 """
-
 
 # %%
 df = df.drop(
@@ -259,14 +232,11 @@ df = df.drop(
 )
 
 # %%
-
-
 """
 Another error found and corrected
 """
 
 # %%
-
 df.loc[df["Year Founded"] == 1840, "Year Founded"] = 2006
 df.loc[df["Year Founded"] == 1933, "Year Founded"] = 1989
 
@@ -284,10 +254,10 @@ df.head()
 # %%
 df.info()
 
+# %%
 """
 Processing countries
 """
-
 
 # %%
 df["Country (HQ)"].value_counts()
@@ -311,8 +281,6 @@ numeric_cols = df.select_dtypes(include=[float, int]).columns
 categorical_cols = df.select_dtypes(include=[object]).columns
 
 # %%
-
-
 """
 # Checking outliers for actual numeric values
 """
@@ -352,14 +320,11 @@ for col in numeric_cols:
     print(f"{col} skew: {df[col].skew():.2f}")
 
 # %%
-
-
 """
 - Skewness of Total Funding and Age on acquisition is high so we can use log transformation to avoid data skewing 
 """
 
 # %%
-
 df["Total Funding ($)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
 
 # %%
@@ -367,91 +332,25 @@ df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
 df["Total Funding ($)"] = np.log(df["Total Funding ($)"] + 1)
 
 # %%
-
-
 """
 ### Imputing the null values
 """
 
+# %%
+df = df.dropna()
 
 # %%
-
-def knn_impute_numeric(df: pd.DataFrame, n_neighbors: int = 5) -> pd.DataFrame:
-
-    numeric_df = df[numeric_cols]
-    imputer = KNNImputer(n_neighbors=n_neighbors)
-    imputed_array = imputer.fit_transform(numeric_df)
-    imputed_df = pd.DataFrame(imputed_array, columns=numeric_cols, index=df.index)
-    df[numeric_cols] = imputed_df
-
-    categorical_df = df[categorical_cols]
-
-    categorical_df = categorical_df.astype(str)
-
-    cat_imputer = SimpleImputer(strategy="most_frequent")
-    cat_imputed_array = cat_imputer.fit_transform(categorical_df)
-    cat_imputed_df = pd.DataFrame(
-        cat_imputed_array, columns=categorical_cols, index=df.index
-    )
-    df[categorical_cols] = cat_imputed_df
-
-    return df
-
-
-# %%
-df.isnull().sum()
-
-# %%
-df.dropna(inplace=True)
-
-# %%
-df.isnull().sum()
-
-# %%
-df.duplicated().sum()
-
-# %%
-df.info()
-
-# %%
-df.head()
-
-# %%
-df['Deal size class'].value_counts()
-
-
-# %%
-df.isnull().sum().sum()
-
-# %%
-must_not_be_null = [
-    "Deal size class",
-    "Acquiring Company",
-    "Year of acquisition announcement",
-]
-
-df = df.dropna(subset=must_not_be_null)
-
-df = knn_impute_numeric(df)
-
-# %%
-df.isnull().sum().sum()
-
+df["Deal size class"].value_counts()
 
 # %%
 scaler = MinMaxScaler()
 df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 
 # %%
-
-df.head()
-
-# %%
-df['Years Since Last Update of # Employees'].value_counts()
-
 """
 ### Splitting each multi-valued category to an array of categories
 """
+
 
 # %%
 def SplitMultiValuedColumn(column):
@@ -467,15 +366,16 @@ def SplitMultiValuedColumn(column):
             c.append(values)
     return c
 
+
 # %%
 def getUniqueLabels(column):
-    uniqueLabels = set()  
+    uniqueLabels = set()
     for labels in column:
-        if isinstance(labels, list):  
+        if isinstance(labels, list):
             for label in labels:
                 if label != "None":
-                    uniqueLabels.add(label)  
-    return list(uniqueLabels)  
+                    uniqueLabels.add(label)
+    return list(uniqueLabels)
 
 
 # %%
@@ -492,9 +392,6 @@ def encodeCategory(df, label: str, categories=[]):
     )
 
 
-
-
-
 # %%
 oneHotEncoded = [
     "Status",
@@ -505,16 +402,12 @@ oneHotEncoded = [
 ]
 
 # %%
-
-df = df.drop(oneHotEncoded, axis=1)
-
 df = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
 
 # %%
 """
 These columns contain lists that can't be given to the model , and one hot encoding them isn't effiecent
 """
-
 
 # %%
 lists = [
@@ -529,8 +422,6 @@ lists = [
 df = df.drop(["Company"] + lists, axis=1)
 
 # %%
-
-
 """
 One hot encoding Terms
 """
@@ -550,10 +441,10 @@ df["Market Categories"].value_counts()
 # %%
 df.head()
 
+# %%
 """
 One Hot encoding market categories
 """
-
 
 # %%
 marketCategories = getUniqueLabels(
@@ -574,8 +465,6 @@ for category in marketCategoriesAcquiring:
     )
 
 # %%
-
-
 """
 Delete the original columns
 """
@@ -601,7 +490,6 @@ print(f"Number of rows: {num_rows}")
 # %%
 """
 # Dropping columns with only sum = 1 to minimize the number of features
-
 """
 
 # %%
@@ -637,13 +525,13 @@ df.head()
 X_train, X_test, y_train, y_test = train_test_split(
     df.drop(
         [
-            "Deal size class",  
+            "Deal size class",
         ],
         axis=1,
     ),
-    df["Deal size class"],  
-    test_size=0.2,  
-    random_state=42, 
+    df["Deal size class"],
+    test_size=0.2,
+    random_state=42,
 )
 
 
@@ -660,9 +548,9 @@ from sklearn.metrics import classification_report, accuracy_score
 from sklearn.model_selection import StratifiedKFold
 
 ada_param_grid = {
-    'n_estimators': [50, 100, 150],  
-    'learning_rate': [0.01, 0.1, 1],  
-    'estimator': [DecisionTreeClassifier(max_depth=1), None]  
+    "n_estimators": [50, 100, 150],
+    "learning_rate": [0.01, 0.1, 1],
+    "estimator": [DecisionTreeClassifier(max_depth=1), None],
 }
 
 ada_boost = AdaBoostClassifier(random_state=67)
@@ -673,7 +561,9 @@ ada_grid_search = GridSearchCV(ada_boost, ada_param_grid, cv=cv, n_jobs=-1, verb
 ada_grid_search.fit(X_train, y_train)
 
 print("AdaBoost Best Parameters: ", ada_grid_search.best_params_)
-print(f"AdaBoost Best Cross-Validation Accuracy: {ada_grid_search.best_score_ * 100:.2f}%")
+print(
+    f"AdaBoost Best Cross-Validation Accuracy: {ada_grid_search.best_score_ * 100:.2f}%"
+)
 
 ada_best = ada_grid_search.best_estimator_
 y_pred_ada = ada_best.predict(X_test)
@@ -682,19 +572,25 @@ print(f"AdaBoost Test Accuracy: {accuracy_score(y_test, y_pred_ada) * 100:.2f}%"
 print(classification_report(y_test, y_pred_ada))
 
 # %%
+print(f"{(((y_pred_ada==y_test).sum()/len(y_test))*100):.2f}")
+print(classification_report(y_test, y_pred_ada))
+cm = confusion_matrix(y_test, y_pred_ada)
+sns.heatmap(cm, annot=True, cmap="Blues")
+
+# %%
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.model_selection import StratifiedKFold
 
-#Random Forest Best Parameters:  {'n_estimators': 150, 'min_samples_split': 2, 'min_samples_leaf': 4, 'max_features': 'sqrt', 'max_depth': 10}
+# Random Forest Best Parameters:  {'n_estimators': 150, 'min_samples_split': 2, 'min_samples_leaf': 4, 'max_features': 'sqrt', 'max_depth': 10}
 
 rf_param_grid = {
-    'n_estimators': [50, 100, 150],  
-    'max_depth': [10, 20, None],  
-    'min_samples_split': [2, 5, 10],  
-    'min_samples_leaf': [1, 2, 4],  
-    'max_features': ['auto', 'sqrt', 'log2']  
+    "n_estimators": [50, 100, 150],
+    "max_depth": [10, 20, None],
+    "min_samples_split": [2, 5, 10],
+    "min_samples_leaf": [1, 2, 4],
+    "max_features": ["auto", "sqrt", "log2"],
 }
 
 rf = RandomForestClassifier(random_state=67)
@@ -705,7 +601,9 @@ rf_grid_search = RandomizedSearchCV(rf, rf_param_grid, cv=cv, n_jobs=-1, verbose
 rf_grid_search.fit(X_train, y_train)
 
 print("Random Forest Best Parameters: ", rf_grid_search.best_params_)
-print(f"Random Forest Best Cross-Validation Accuracy: {rf_grid_search.best_score_ * 100:.2f}%")
+print(
+    f"Random Forest Best Cross-Validation Accuracy: {rf_grid_search.best_score_ * 100:.2f}%"
+)
 
 rf_best = rf_grid_search.best_estimator_
 y_pred_rf = rf_best.predict(X_test)
@@ -718,13 +616,15 @@ X_train = pd.get_dummies(X_train)
 X_test = pd.get_dummies(X_test)
 
 
-X_train, X_test = X_train.align(X_test, join='left', axis=1, fill_value=0)
+X_train, X_test = X_train.align(X_test, join="left", axis=1, fill_value=0)
 
 # %%
 from xgboost import XGBClassifier
 from sklearn.metrics import classification_report, accuracy_score
 
-model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', enable_categorical=True)
+model = XGBClassifier(
+    use_label_encoder=False, eval_metric="mlogloss", enable_categorical=True
+)
 model.fit(X_train, y_train)
 
 y_pred = model.predict(X_test)
@@ -734,11 +634,7 @@ print("Classification Report:\n", classification_report(y_test, y_pred))
 
 
 # %%
-#df_corr = df.corr()
-
-#plt.figure(figsize=(100, 80))
-#sns.heatmap(df_corr, annot=True, cmap='coolwarm', fmt='.2f', square=True, linewidths=0.5)
-
-#plt.title("Correlation Matrix Heatmap")
-#plt.tight_layout()
-#plt.show() 
+print(f"{(((y_pred==y_test).sum()/len(y_test))*100):.2f}")
+print(classification_report(y_test, y_pred))
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, annot=True, cmap="Blues")
