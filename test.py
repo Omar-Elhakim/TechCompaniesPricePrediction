@@ -29,7 +29,7 @@ Define utility functions for loading data and encoding categories
 # %%
 # Set classification flag
 # isClassification = False
-isClassification = False
+isClassification = True
 
 def pickle_load(name: str):
     """Load pickled objects from the specified path"""
@@ -155,9 +155,6 @@ df["Age on acquisition"] = df["Year of acquisition announcement"] - df["Year Fou
 df = df[df["Country (HQ)"] != "Israel"]
 df["Country (HQ)"] = df["Country (HQ)"].replace("United Stats of AMerica", "United States")
 
-# Handle rare countries
-rare = df["Country (HQ)"].value_counts()[lambda x: x < 3].index
-df["Country (HQ)"] = df["Country (HQ)"].replace(rare, "Other")
 
 # Convert data types
 df = df.infer_objects()
@@ -198,7 +195,7 @@ numeric_cols = df.select_dtypes(include=[float, int]).columns.tolist()
 categorical_cols = df.select_dtypes(include=[object]).columns.tolist()
 
 # Drop rows with missing target or key features
-df.dropna(subset=[target_col, "Acquiring Company", "Year of acquisition announcement"], inplace=True)
+#df.dropna(subset=[target_col, "Acquiring Company", "Year of acquisition announcement"], inplace=True)
 
 # Impute missing values
 knn = KNNImputer()
@@ -249,32 +246,46 @@ for category in pickle_load("terms"):
 df
 
 # %%
+marketCategories_ = getUniqueLabels(SplitMultiValuedColumn(df["Market Categories"].dropna()))
 df["Market Categories"] = SplitMultiValuedColumn(df["Market Categories"])
-for category in pickle_load("marketCategories"):
+marketCategories = pickle_load("marketCategories")
+
+col_name = "Market Categories"
+for category in marketCategories_:
+    if category not in marketCategories:
+        df[col_name] = df[col_name].replace(category, np.nan)
+
+for category in marketCategories:
+    
     print(category)
     df[category] = df["Market Categories"].apply(
         lambda x: 1 if ((type(x) != float) and (category in x)) else 0
     )
 
 # %%
-df
+(df['Market Categories (Acquiring)'] == 'Other').sum()
 
 # %%
 # Multi-label encoding for terms and market categories
-marketCategoriesAcquiring_ = getUniqueLabels(SplitMultiValuedColumn(df["Market Categories (Acquiring"].dropna))
+
+marketCategoriesAcquiring_ = getUniqueLabels(SplitMultiValuedColumn(df["Market Categories (Acquiring)"].dropna()))
 df["Market Categories (Acquiring)"] = SplitMultiValuedColumn(df["Market Categories (Acquiring)"])
 
 marketCategoriesAcquiring = pickle_load("marketCategoriesAcquiring")
+
+col_name = "Market Categories (Acquiring)"
+for category in marketCategoriesAcquiring_:
+    if category not in marketCategoriesAcquiring:
+        df[col_name] = df[col_name].replace(category, np.nan)
+imputer = SimpleImputer(strategy="most_frequent")
+df[[col_name,"Market Categories"]] = imputer.fit_transform(df[[col_name,"Market Categories"]].astype(str))
+
 for category in marketCategoriesAcquiring:
     df[category + " (Acquiring)"] = df["Market Categories (Acquiring)"].apply(
         lambda x: 1 if ((type(x) != float) and x and (category in x)) else 0
     )
 
-for category in marketCategoriesAcquiring_:
-    if category not in marketCategoriesAcquiring:
-        # TODO: convert to other or nan then impute or something similar
-        pass
-    pass
+    
 
 # Drop original columns
 df.drop(columns=["Market Categories", "Market Categories (Acquiring)", "Terms"], inplace=True)
@@ -290,8 +301,20 @@ Encode the target variable and other categorical features
 # TODO: Get unique categories 
 # compare with loaded categories
 # if there is "Other" category you can use it if not use nan
+AcquiringCompany_ = getUniqueLabels(df["Acquiring Company"].dropna())
 
-encodeCategory(df, "Acquiring Company", pickle_load("AcquiringCompany"))
+AcquiringCompany = pickle_load("AcquiringCompany")
+col_name = "Acquiring Company"
+for category in AcquiringCompany_:
+    if category not in AcquiringCompany:
+        df[col_name] = df[col_name].replace(category, np.nan)
+
+imputer = SimpleImputer(strategy="most_frequent")
+df[[col_name]] = imputer.fit_transform(df[[col_name]].astype(str))
+   
+
+encodeCategory(df, "Acquiring Company", AcquiringCompany)
+      
 # NOTE: will crash if the input is different 
 # then impute if replaced with nan
 
@@ -313,7 +336,7 @@ y_test = df[target_col]
 
 
 # Load trained model
-model = pickle_load("model2")
+model = pickle_load("model1")
 
 # Ensure all required features are present
 for col in model.feature_names_in_:
