@@ -1,2 +1,19 @@
+# Environment / secrets
 .env
+
+# Jupyter notebooks (kept local; paired .py scripts are the source of truth)
 *.ipynb
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
