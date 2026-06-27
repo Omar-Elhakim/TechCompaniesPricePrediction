@@ -5,6 +5,8 @@
 
 # %%
 import warnings
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -34,10 +36,10 @@ Reviewing a sample row from each file
 """
 
 # %%
-acquired = pd.read_csv("Data/ClassificationData/Acquired Tech Companies.csv")
-acquiring = pd.read_csv("Data/ClassificationData/Acquiring Tech Companies.csv")
-acquisitions = pd.read_csv("Data/ClassificationData/Acquisitions.csv")
-founders = pd.read_csv("Data/ClassificationData/Founders and Board Members.csv")
+acquired = pd.read_csv("data/classification/Acquired Tech Companies.csv")
+acquiring = pd.read_csv("data/classification/Acquiring Tech Companies.csv")
+acquisitions = pd.read_csv("data/classification/Acquisitions.csv")
+founders = pd.read_csv("data/classification/Founders and Board Members.csv")
 
 # %%
 """
@@ -126,16 +128,16 @@ Create a new column
 
 # %%
 acquiring["Years Since Last Update of # Employees"] = (
-    2025 - acquiring["Number of Employees (year of last update)"]
+    datetime.now().year - acquiring["Number of Employees (year of last update)"]
 )
 
 # %%
 """
-Replace 'Not yet' with 2025 because its the closest value
+Replace 'Not yet' with the current year because it's the closest value
 """
 
 # %%
-acquiring.loc[acquiring["IPO"] == "Not yet", "IPO"] = 2025
+acquiring.loc[acquiring["IPO"] == "Not yet", "IPO"] = datetime.now().year
 
 # %%
 acquiring["Number of Employees"] = [
@@ -256,6 +258,11 @@ for col in numeric_cols:
     outliers[col] = outlier_mask.sum()
 
 # %%
+q1 = df["Age on acquisition"].quantile(0.25)
+q3 = df["Age on acquisition"].quantile(0.75)
+iqr = q3 - q1
+lower_bound = q1 - 1.5 * iqr
+upper_bound = q3 + 1.5 * iqr
 median_value = df["Age on acquisition"].median()
 df["Age on acquisition"] = df["Age on acquisition"].apply(
     lambda x: median_value if x < lower_bound or x > upper_bound else x
@@ -485,7 +492,7 @@ rf_param_grid = {
     "max_depth": [10, 20, None],
     "min_samples_split": [2, 5, 10],
     "min_samples_leaf": [1, 2, 4],
-    "max_features": ["auto", "sqrt", "log2"],
+    "max_features": ["sqrt", "log2"],
 }
 
 rf = RandomForestClassifier(random_state=67)
@@ -518,9 +525,7 @@ X_test = pd.get_dummies(X_test)
 X_train, X_test = X_train.align(X_test, join="left", axis=1, fill_value=0)
 
 # %%
-model = XGBClassifier(
-    use_label_encoder=False, eval_metric="mlogloss", enable_categorical=True
-)
+model = XGBClassifier(eval_metric="mlogloss", enable_categorical=True)
 model.fit(X_train, y_train)
 
 y_pred = model.predict(X_test)

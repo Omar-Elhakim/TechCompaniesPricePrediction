@@ -4,6 +4,8 @@ Imports
 """
 
 # %%
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
 import requests
@@ -27,19 +29,19 @@ Reviewing a sample row from each file
 """
 
 # %%
-acquired = pd.read_csv("Data/RegressionData/Acquired Tech Companies.csv")
+acquired = pd.read_csv("data/regression/Acquired Tech Companies.csv")
 acquired.iloc[0]
 
 # %%
-acquiring = pd.read_csv("Data/RegressionData/Acquiring Tech Companies.csv")
+acquiring = pd.read_csv("data/regression/Acquiring Tech Companies.csv")
 acquiring.iloc[0]
 
 # %%
-acquisitions = pd.read_csv("Data/RegressionData/Acquisitions.csv")
+acquisitions = pd.read_csv("data/regression/Acquisitions.csv")
 acquisitions.iloc[0]
 
 # %%
-founders = pd.read_csv("Data/RegressionData/Founders and Board Members.csv")
+founders = pd.read_csv("data/regression/Founders and Board Members.csv")
 founders.iloc[0]
 
 
@@ -238,7 +240,7 @@ acquiring.loc[
 
 # %%
 acquiring["Years Since Last Update of # Employees"] = (
-    2025 - acquiring["Number of Employees (year of last update)"]
+    datetime.now().year - acquiring["Number of Employees (year of last update)"]
 )
 
 # %%
@@ -495,11 +497,8 @@ oneHotEncoded = [
 df_pandas_encoded = pd.get_dummies(df, columns=oneHotEncoded, drop_first=True)
 
 # %%
-df = df.drop(oneHotEncoded, axis=1)
-
-# %%
 """
-These columns contain lists that can't be given to the model , and one hot encoding them isn't effiecent
+These columns contain lists that can't be given to the model , and one hot encoding them isn't efficient
 """
 
 # %%
@@ -512,15 +511,9 @@ lists = [
 ]
 
 # %%
-df = df.drop(lists, axis=1)
-
-# %%
 """
-The acwuired company is unique for every value
+The acquired company is unique for every value
 """
-
-# %%
-df = df.drop("Company", axis=1)
 
 # %%
 df = df_pandas_encoded.drop(["Company"] + lists, axis=1)
@@ -639,6 +632,11 @@ plt.title("Boxplot of Age on Acquisition")
 plt.show()
 
 # %%
+q1 = df["Age on acquisition"].quantile(0.25)
+q3 = df["Age on acquisition"].quantile(0.75)
+iqr = q3 - q1
+lower_bound = q1 - 1.5 * iqr
+upper_bound = q3 + 1.5 * iqr
 median_value = df["Age on acquisition"].median()
 df["Age on acquisition"] = df["Age on acquisition"].apply(
     lambda x: median_value if x < lower_bound or x > upper_bound else x
@@ -657,7 +655,7 @@ for col in numeric_cols:
 df["Total Funding ($)"].apply(pd.to_numeric, errors="coerce").isnull().sum()
 
 # %%
-df["Total Funding ($)"].fillna(df["Total Funding ($)"].median(), inplace=True)
+df["Total Funding ($)"] = df["Total Funding ($)"].fillna(df["Total Funding ($)"].median())
 
 # %%
 df["Age on acquisition"] = np.log(df["Age on acquisition"] + 1)
